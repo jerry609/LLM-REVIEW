@@ -75,12 +75,13 @@
  09  Gemini 2.5 Ultra (Google)            ← Google 最强推理模型
  10  DeepSeek-V4 预告                     ← 新一代架构, 更大规模 MoE
  11  MiniMax-02 (预期)                    ← Hybrid 架构 v2, 更长 context
- 12  Qwen3.5 系列 (预期)                  ← 持续数据和能力迭代
+ 12  各家持续迭代中
 
 2026 ──────────────────────────────────────────────────────────────────
  01  RWKV-7 稳定版 + RWKV-8 实验           ← 广义 Delta Rule, 无自注意力 SoTA
  01  各家 Agent 框架成熟                    ← MCP 协议统一, Claude Computer Use 2.0
- 02  当前状态 (2026.02.19)                 ← 推理模型普及, MoE 标配, Agent 框架爆发, 多模态原生
+ 02  Qwen3.5 (阿里, 2026.02.17)           ← ⭐ 最新！聚焦 AI Agent, 中国 AI 竞争重心转向 Agent
+ 02  当前状态 (2026.02.19)                 ← 推理模型普及, MoE 标配, Agent 框架爆发, Qwen3.5 刚发布
 ```
 
 ---
@@ -189,16 +190,27 @@ Qwen2.5-Max (2025.02)
 │   → Why: Dense 72B 的参数效率瓶颈, MoE 是必然方向
 ▼
 Qwen3 (2025.04) ⭐ 新一代
-    全系列: 0.6B-235B (Dense + MoE)
-    核心创新: Thinking + Non-thinking 双模式统一
-    → Why: 推理模型 (长 CoT) 和对话模型 (快速响应) 需求并存;
-      /think 和 /no_think 切换, 一个模型覆盖两种场景
-    MoE 旗舰: 235B (22B active), 128 experts
-    训练: 4 阶段 (预训练 → 长 CoT cold start → RL → 双模式融合)
-    119 种语言支持
+│   全系列: 0.6B-235B (Dense + MoE)
+│   核心创新: Thinking + Non-thinking 双模式统一
+│   → Why: 推理模型 (长 CoT) 和对话模型 (快速响应) 需求并存;
+│     /think 和 /no_think 切换, 一个模型覆盖两种场景
+│   MoE 旗舰: 235B (22B active), 128 experts
+│   训练: 4 阶段 (预训练 → 长 CoT cold start → RL → 双模式融合)
+│   119 种语言支持
+│   技术报告: arXiv:2504.07491
+▼
+Qwen3-Coder / Qwen3-Math (2025.06)
+│   代码/数学专项子系列, 延续 Qwen3 双模式能力
+▼
+Qwen3.5 (2026.02.17) ⭐⭐ 最新发布！
+    定位：AI Agent 原生模型, 标志中国 AI 竞争从对话向 Agent 转变
+    → Why: 单纯对话/推理能力已趋同质化, Agent 能力成为下一个差异化点
+    → CNBC 报道: "Alibaba unveils Qwen3.5 as China's chatbot race shifts to AI agents"
+    核心方向: Agent 框架协同, 工具调用增强, 多步推理+行动
+    → 阿里整个 Qwen 系列从 1.0→1.5→2→2.5→3→3.5, 每代半年+迭代
 ```
 
-**Qwen 技术理念**：「数据为王 + 全系列覆盖」—— 用最大规模数据训练全覆盖的模型矩阵，配合最友好的开源协议抢占社区生态。
+**Qwen 技术理念**：「数据为王 + 全系列覆盖 + Agent 生态」—— 用最大规模数据训练全覆盖的模型矩阵，配合最友好的开源协议抢占社区生态；3.5 代起全面拥抱 AI Agent。
 
 ---
 
