@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主流大模型发展脉络与核心优化点 — 2026.02 更新</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+    --text: #e2e8f0; --text2: #94a3b8; --accent: #38bdf8;
+    --green: #4ade80; --orange: #fb923c; --pink: #f472b6;
+    --red: #f87171; --purple: #a78bfa; --yellow: #facc15;
+    --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height:1.7; }
+  .container { max-width:1400px; margin:0 auto; padding:20px; }
+
+  /* Header */
+  header { text-align:center; padding:60px 20px 40px; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%); border-bottom: 1px solid var(--border); }
+  header h1 { font-size:2.4rem; background: linear-gradient(90deg, var(--accent), var(--purple), var(--pink)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:10px; }
+  header p { color:var(--text2); font-size:1.1rem; }
+  .update-badge { display:inline-block; background:var(--green); color:#000; padding:4px 16px; border-radius:20px; font-size:0.85rem; font-weight:600; margin-top:12px; }
+
+  /* Navigation */
+  nav { position:sticky; top:0; z-index:100; background:rgba(15,23,42,0.95); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:12px 0; }
+  nav .container { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  nav a { color:var(--text2); text-decoration:none; padding:6px 16px; border-radius:20px; font-size:0.9rem; transition:all .2s; border:1px solid transparent; }
+  nav a:hover, nav a.active { color:var(--accent); border-color:var(--accent); background:rgba(56,189,248,0.1); }
+
+  /* Section */
+  section { margin-top:48px; }
+  section h2 { font-size:1.8rem; margin-bottom:24px; padding-bottom:12px; border-bottom:2px solid var(--accent); display:flex; align-items:center; gap:12px; }
+  section h2 .icon { font-size:1.5rem; }
+  h3 { color:var(--accent); font-size:1.3rem; margin:24px 0 12px; }
+
+  /* Timeline */
+  .timeline { position:relative; padding-left:40px; }
+  .timeline::before { content:''; position:absolute; left:18px; top:0; bottom:0; width:3px; background:linear-gradient(to bottom, var(--accent), var(--purple), var(--pink)); border-radius:2px; }
+  .tl-year { font-size:1.6rem; font-weight:800; color:var(--accent); margin:24px 0 8px; position:relative; }
+  .tl-year::before { content:''; position:absolute; left:-27px; top:50%; transform:translateY(-50%); width:14px; height:14px; background:var(--accent); border-radius:50%; border:3px solid var(--bg); }
+  .tl-item { position:relative; margin-bottom:12px; padding:12px 16px; background:var(--surface); border-radius:var(--radius); border-left:3px solid transparent; transition:all .2s; }
+  .tl-item:hover { border-left-color:var(--accent); transform:translateX(4px); }
+  .tl-item .date { color:var(--text2); font-size:0.85rem; font-weight:600; }
+  .tl-item .name { font-weight:700; color:var(--text); }
+  .tl-item .desc { color:var(--text2); font-size:0.9rem; margin-top:4px; }
+  .tl-item .tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .tag { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; }
+  .tag-ds { background:rgba(56,189,248,0.2); color:var(--accent); }
+  .tag-qw { background:rgba(74,222,128,0.2); color:var(--green); }
+  .tag-glm { background:rgba(251,146,60,0.2); color:var(--orange); }
+  .tag-kimi { background:rgba(244,114,182,0.2); color:var(--pink); }
+  .tag-mm { background:rgba(167,139,250,0.2); color:var(--purple); }
+  .tag-meta { background:rgba(248,113,113,0.2); color:var(--red); }
+  .tag-oai { background:rgba(250,204,21,0.2); color:var(--yellow); }
+  .tag-star { background:rgba(250,204,21,0.3); color:var(--yellow); }
+
+  /* Company Cards */
+  .company-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:24px; }
+  .company-card { background:var(--surface); border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); transition:all .3s; }
+  .company-card:hover { border-color:var(--accent); box-shadow:0 8px 32px rgba(56,189,248,0.15); }
+  .cc-header { padding:20px; display:flex; align-items:center; gap:16px; border-bottom:1px solid var(--border); }
+  .cc-logo { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; font-weight:800; color:#fff; }
+  .cc-logo.ds { background:linear-gradient(135deg, #0ea5e9, #0284c7); }
+  .cc-logo.qw { background:linear-gradient(135deg, #22c55e, #16a34a); }
+  .cc-logo.glm { background:linear-gradient(135deg, #f97316, #ea580c); }
+  .cc-logo.kimi { background:linear-gradient(135deg, #ec4899, #db2777); }
+  .cc-logo.mm { background:linear-gradient(135deg, #8b5cf6, #7c3aed); }
+  .cc-logo.oai { background:linear-gradient(135deg, #eab308, #ca8a04); }
+  .cc-logo.meta { background:linear-gradient(135deg, #ef4444, #dc2626); }
+  .cc-logo.mst { background:linear-gradient(135deg, #06b6d4, #0891b2); }
+  .cc-logo.ggl { background:linear-gradient(135deg, #3b82f6, #2563eb); }
+  .cc-logo.ant { background:linear-gradient(135deg, #d97706, #b45309); }
+  .cc-info h3 { margin:0; color:var(--text); font-size:1.2rem; }
+  .cc-info p { color:var(--text2); font-size:0.85rem; margin:0; }
+  .cc-body { padding:20px; }
+  .cc-body .model-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(71,85,105,0.4); font-size:0.9rem; }
+  .cc-body .model-row:last-child { border-bottom:none; }
+  .cc-body .model-name { font-weight:600; }
+  .cc-body .model-date { color:var(--text2); font-size:0.8rem; }
+  .cc-body .model-detail { color:var(--text2); font-size:0.82rem; }
+  .cc-body .highlight { color:var(--accent); font-weight:600; }
+
+  /* Comparison Tables */
+  .table-wrap { overflow-x:auto; margin:16px 0; }
+  table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+  th { background:var(--surface2); color:var(--accent); padding:12px 14px; text-align:left; font-weight:600; white-space:nowrap; position:sticky; top:0; }
+  td { padding:10px 14px; border-bottom:1px solid rgba(71,85,105,0.3); }
+  tr:hover td { background:rgba(56,189,248,0.05); }
+  .cell-star { color:var(--yellow); font-weight:700; }
+  .cell-good { color:var(--green); }
+  .cell-warn { color:var(--orange); }
+  .cell-na { color:var(--text2); font-style:italic; }
+
+  /* Tech Evolution */
+  .evolution-chain { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:12px 0; padding:16px; background:var(--surface); border-radius:var(--radius); }
+  .evo-node { padding:8px 16px; border-radius:8px; font-weight:600; font-size:0.85rem; border:2px solid var(--border); }
+  .evo-node.current { border-color:var(--accent); background:rgba(56,189,248,0.1); color:var(--accent); }
+  .evo-node.future { border-color:var(--purple); background:rgba(167,139,250,0.1); color:var(--purple); border-style:dashed; }
+  .evo-arrow { color:var(--text2); font-size:1.2rem; }
+
+  /* Stats Cards */
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin:20px 0; }
+  .stat-card { background:var(--surface); border-radius:var(--radius); padding:20px; text-align:center; border:1px solid var(--border); }
+  .stat-card .stat-value { font-size:2rem; font-weight:800; background:linear-gradient(90deg, var(--accent), var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .stat-card .stat-label { color:var(--text2); font-size:0.85rem; margin-top:4px; }
+
+  /* Interview Q&A */
+  .qa-list { display:flex; flex-direction:column; gap:16px; }
+  .qa-item { background:var(--surface); border-radius:var(--radius); padding:20px; border-left:4px solid var(--accent); }
+  .qa-item .question { font-weight:700; color:var(--accent); margin-bottom:8px; font-size:1rem; }
+  .qa-item .answer { color:var(--text2); font-size:0.92rem; line-height:1.8; }
+  .qa-item .answer strong { color:var(--text); }
+
+  /* Tabs */
+  .tab-header { display:flex; gap:4px; border-bottom:2px solid var(--border); margin-bottom:16px; overflow-x:auto; }
+  .tab-btn { padding:10px 20px; background:none; border:none; color:var(--text2); cursor:pointer; font-size:0.9rem; font-weight:600; transition:all .2s; border-bottom:2px solid transparent; margin-bottom:-2px; white-space:nowrap; }
+  .tab-btn:hover { color:var(--text); }
+  .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* Benchmark Chart (CSS bars) */
+  .bench-row { display:flex; align-items:center; gap:12px; margin:8px 0; }
+  .bench-label { width:180px; font-size:0.85rem; font-weight:600; text-align:right; flex-shrink:0; }
+  .bench-bar-wrap { flex:1; background:var(--surface2); height:28px; border-radius:6px; overflow:hidden; position:relative; }
+  .bench-bar { height:100%; border-radius:6px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; font-size:0.75rem; font-weight:700; color:#fff; transition:width 1s ease; }
+  .bench-bar.ds { background:linear-gradient(90deg, #0284c7, #38bdf8); }
+  .bench-bar.qw { background:linear-gradient(90deg, #16a34a, #4ade80); }
+  .bench-bar.glm { background:linear-gradient(90deg, #ea580c, #fb923c); }
+  .bench-bar.kimi { background:linear-gradient(90deg, #db2777, #f472b6); }
+  .bench-bar.mm { background:linear-gradient(90deg, #7c3aed, #a78bfa); }
+  .bench-bar.oai { background:linear-gradient(90deg, #ca8a04, #facc15); }
+  .bench-bar.meta { background:linear-gradient(90deg, #dc2626, #f87171); }
+  .bench-bar.ggl { background:linear-gradient(90deg, #2563eb, #60a5fa); }
+
+  /* Architecture Diagram */
+  .arch-diagram { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px; margin:20px 0; }
+  .arch-box { background:var(--surface); border-radius:var(--radius); padding:20px; border:1px solid var(--border); }
+  .arch-box h4 { color:var(--accent); margin-bottom:12px; font-size:1rem; }
+  .arch-layer { display:flex; align-items:center; gap:8px; padding:6px 12px; margin:4px 0; border-radius:6px; font-size:0.82rem; }
+  .arch-layer.softmax { background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); }
+  .arch-layer.linear { background:rgba(167,139,250,0.15); border:1px solid rgba(167,139,250,0.3); }
+  .arch-layer.mla { background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.3); }
+  .arch-layer.moe { background:rgba(251,146,60,0.15); border:1px solid rgba(251,146,60,0.3); }
+  .arch-layer.ssm { background:rgba(244,114,182,0.15); border:1px solid rgba(244,114,182,0.3); }
+
+  /* Key Insights */
+  .insight-box { background:linear-gradient(135deg, rgba(56,189,248,0.1), rgba(167,139,250,0.1)); border:1px solid rgba(56,189,248,0.3); border-radius:var(--radius); padding:20px; margin:16px 0; }
+  .insight-box h4 { color:var(--accent); margin-bottom:8px; }
+  .insight-box ul { padding-left:20px; color:var(--text2); }
+  .insight-box li { margin:6px 0; }
+
+  /* Footer */
+  footer { text-align:center; padding:40px 20px; margin-top:60px; border-top:1px solid var(--border); color:var(--text2); font-size:0.85rem; }
+
+  /* Responsive */
+  @media (max-width:768px) {
+    header h1 { font-size:1.6rem; }
+    .company-grid { grid-template-columns:1fr; }
+    .bench-label { width:120px; font-size:0.75rem; }
+    .tab-btn { padding:8px 12px; font-size:0.8rem; }
+  }
+
+  /* Collapsible */
+  details { background:var(--surface); border-radius:var(--radius); margin:8px 0; border:1px solid var(--border); }
+  details summary { padding:14px 20px; cursor:pointer; font-weight:600; color:var(--text); transition:all .2s; }
+  details summary:hover { color:var(--accent); }
+  details[open] summary { border-bottom:1px solid var(--border); color:var(--accent); }
+  details .detail-body { padding:16px 20px; }
+
+  /* Tooltip-like annotations */
+  .anno { position:relative; border-bottom:1px dashed var(--accent); cursor:help; }
+  .tech-pill { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.78rem; font-weight:600; margin:2px; }
+  .tp-arch { background:rgba(56,189,248,0.15); color:var(--accent); }
+  .tp-data { background:rgba(74,222,128,0.15); color:var(--green); }
+  .tp-rl { background:rgba(244,114,182,0.15); color:var(--pink); }
+  .tp-eng { background:rgba(251,146,60,0.15); color:var(--orange); }
+</style>
+</head>
+<body>
+
+<!-- =================== HEADER =================== -->
+<header>
+  <h1>🧠 主流大模型发展脉络与核心优化点</h1>
+  <p>DeepSeek · Qwen · GLM · Kimi · MiniMax · Llama · Mistral · OpenAI · Anthropic · Google</p>
+  <div class="update-badge">📅 更新至 2026 年 2 月 19 日</div>
+</header>
+
+<!-- =================== NAV =================== -->
+<nav>
+  <div class="container">
+    <a href="#timeline" class="active">📅 时间线</a>
+    <a href="#companies">🏢 各家详解</a>
+    <a href="#architecture">🔧 架构对比</a>
+    <a href="#benchmarks">📊 性能基准</a>
+    <a href="#comparison">⚔️ 横向对比</a>
+    <a href="#trends">🔮 趋势分析</a>
+    <a href="#interview">💬 面试问答</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- =================== KEY STATS =================== -->
+<section>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-value">12+</div><div class="stat-label">主流厂商 (含 RWKV/xAI)</div></div>
+    <div class="stat-card"><div class="stat-value">4560B</div><div class="stat-label">最大开源模型 (MiniMax-01)</div></div>
+    <div class="stat-card"><div class="stat-value">10M</div><div class="stat-label">最长上下文 (Llama 4 Scout)</div></div>
+    <div class="stat-card"><div class="stat-value">$5.5M</div><div class="stat-label">DeepSeek-V3 训练成本</div></div>
+    <div class="stat-card"><div class="stat-value">93.3%</div><div class="stat-label">MLA KV Cache 压缩率</div></div>
+    <div class="stat-card"><div class="stat-value">∞</div><div class="stat-label">RWKV-7 理论上下文长度</div></div>
+  </div>
+</section>
+
+<!-- =================== TIMELINE =================== -->
+<section id="timeline">
+  <h2><span class="icon">📅</span> 全景时间线 (2023 — 2026.02)</h2>
+
+  <div class="timeline">
+    <!-- 2023 -->
+    <div class="tl-year">2023</div>
+    <div class="tl-item">
+      <span class="date">02 月</span> · <span class="name">LLaMA 7B–65B</span>
+      <div class="desc">Meta 开源，模型泄露引爆社区，开源 LLM 时代开始</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">03 月</span> · <span class="name">ChatGLM-6B</span>
+      <div class="desc">Prefix LM 架构，国产首个好用开源对话模型</div>
+      <div class="tags"><span class="tag tag-glm">智谱</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">03 月</span> · <span class="name">GPT-4</span>
+      <div class="desc">多模态旗舰，定义行业标杆。32K context</div>
+      <div class="tags"><span class="tag tag-oai">OpenAI</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">07 月</span> · <span class="name">Llama 2 7B/13B/70B</span>
+      <div class="desc">正式开放商用 + 首次公开 RLHF 流程细节</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">07 月</span> · <span class="name">Claude 2</span>
+      <div class="desc">100K context，长文档理解标杆</div>
+      <div class="tags"><span class="tag" style="background:rgba(217,119,6,0.2);color:#d97706;">Anthropic</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">09 月</span> · <span class="name">Qwen-7B/14B 开源</span>
+      <div class="desc">阿里首个开源中文大模型，Apache 2.0</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">10 月</span> · <span class="name">Kimi Chat 上线</span>
+      <div class="desc">200K 超长上下文，国内首个产品化长上下文 LLM</div>
+      <div class="tags"><span class="tag tag-kimi">Kimi</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">10 月</span> · <span class="name">Mistral 7B</span>
+      <div class="desc">Sliding Window Attention，小而强</div>
+      <div class="tags"><span class="tag" style="background:rgba(6,182,212,0.2);color:#06b6d4;">Mistral</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">11 月</span> · <span class="name">DeepSeek-67B (V1)</span>
+      <div class="desc">首发 Dense 模型，对标 LLaMA 70B</div>
+      <div class="tags"><span class="tag tag-ds">DeepSeek</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">11 月</span> · <span class="name">GPT-4 Turbo</span>
+      <div class="desc">128K context，JSON mode，价格大幅降低</div>
+      <div class="tags"><span class="tag tag-oai">OpenAI</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">12 月</span> · <span class="name">Mixtral 8x7B</span>
+      <div class="desc">开源 MoE 先驱，性价比炸裂</div>
+      <div class="tags"><span class="tag" style="background:rgba(6,182,212,0.2);color:#06b6d4;">Mistral</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">12 月</span> · <span class="name">Gemini 1.0</span>
+      <div class="desc">Google 发布多模态大模型，Ultra/Pro/Nano 三档</div>
+      <div class="tags"><span class="tag" style="background:rgba(59,130,246,0.2);color:#3b82f6;">Google</span></div>
+    </div>
+
+    <!-- 2024 -->
+    <div class="tl-year">2024</div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">Qwen1.5 系列</span>
+      <div class="desc">多语言增强，修复 1.0 短板</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">02 月</span> · <span class="name">Gemini 1.5 Pro</span>
+      <div class="desc">1M token context 原生支持，MoE 架构</div>
+      <div class="tags"><span class="tag" style="background:rgba(59,130,246,0.2);color:#3b82f6;">Google</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">03 月</span> · <span class="name">Claude 3 Opus / Sonnet / Haiku</span>
+      <div class="desc">三档模型矩阵，Opus 追平 GPT-4，200K context</div>
+      <div class="tags"><span class="tag" style="background:rgba(217,119,6,0.2);color:#d97706;">Anthropic</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">03 月</span> · <span class="name">DeepSeek-V2 (236B MoE, 21B active)</span>
+      <div class="desc">⭐ <strong>MLA</strong>（KV Cache 压缩 16×）+ <strong>DeepSeekMoE</strong>（细粒度 160 experts）</div>
+      <div class="tags"><span class="tag tag-ds">DeepSeek</span><span class="tag tag-star">⭐ 转折点</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">04 月</span> · <span class="name">Llama 3 8B/70B</span>
+      <div class="desc">15T tokens，128K context，GQA 标配</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">05 月</span> · <span class="name">GPT-4o</span>
+      <div class="desc">原生多模态（文本+音频+视觉），速度提升 2×，价格降低 50%</div>
+      <div class="tags"><span class="tag tag-oai">OpenAI</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">05 月</span> · <span class="name">Qwen2 0.5B–72B</span>
+      <div class="desc">7T tokens，全系列 GQA+RoPE+SwiGLU 统一架构</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">05 月</span> · <span class="name">GLM-4-9B / GLM-4-Plus</span>
+      <div class="desc">完全转向 Causal LM，1M context (GLM-4-Long)</div>
+      <div class="tags"><span class="tag tag-glm">智谱</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">06 月</span> · <span class="name">Claude 3.5 Sonnet</span>
+      <div class="desc">超越 GPT-4o，成为最强编程助手</div>
+      <div class="tags"><span class="tag" style="background:rgba(217,119,6,0.2);color:#d97706;">Anthropic</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">07 月</span> · <span class="name">Llama 3.1 8B/70B/405B</span>
+      <div class="desc">405B 开源最大 Dense，128K native，4D 并行</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">09 月</span> · <span class="name">Qwen2.5 0.5B–72B + Coder + Math</span>
+      <div class="desc">⭐ <strong>18T tokens</strong>（公开最大）+ YaRN 1M + 合成数据大规模引入</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span><span class="tag tag-star">⭐ 数据为王</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">09 月</span> · <span class="name">OpenAI o1-preview</span>
+      <div class="desc">⭐ 推理模型开创者，Chain-of-Thought + 内部奖励，AIME 83.3%</div>
+      <div class="tags"><span class="tag tag-oai">OpenAI</span><span class="tag tag-star">⭐ 推理拐点</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">09 月</span> · <span class="name">Llama 3.2 1B/3B/11B-Vision/90B-Vision</span>
+      <div class="desc">边缘端模型 + 多模态 Vision 版本</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">10 月</span> · <span class="name">CogVideoX (智谱)</span>
+      <div class="desc">3D VAE + DiT 视频生成</div>
+      <div class="tags"><span class="tag tag-glm">智谱</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">10 月</span> · <span class="name">Claude 3.5 Sonnet v2 + Haiku</span>
+      <div class="desc">Computer Use（Agent 操作电脑），SWE-bench 49%</div>
+      <div class="tags"><span class="tag" style="background:rgba(217,119,6,0.2);color:#d97706;">Anthropic</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">11 月</span> · <span class="name">QwQ-32B-Preview</span>
+      <div class="desc">类 o1 推理模型，基于 Qwen2.5-32B + Long-CoT SFT + RL</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">11 月</span> · <span class="name">Qwen2.5-Coder-32B</span>
+      <div class="desc">开源最强代码模型，LiveCodeBench 超越 GPT-4o</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">12 月</span> · <span class="name">DeepSeek-V3 (671B MoE, 37B active)</span>
+      <div class="desc">⭐⭐ <strong>MLA + MoE + MTP + FP8</strong>，训练仅 $5.5M，追平 GPT-4o</div>
+      <div class="tags"><span class="tag tag-ds">DeepSeek</span><span class="tag tag-star">⭐⭐ 里程碑</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">12 月</span> · <span class="name">Llama 3.3 70B</span>
+      <div class="desc">性能追平 Llama 3.1 405B，性价比大幅提升</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">12 月</span> · <span class="name">OpenAI o1 正式版</span>
+      <div class="desc">推理能力显著提升，AIME 2024: 96.4%</div>
+      <div class="tags"><span class="tag tag-oai">OpenAI</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">12 月</span> · <span class="name">Gemini 2.0 Flash</span>
+      <div class="desc">原生多模态 + Agent 能力 + 2× 速度 + 1M context</div>
+      <div class="tags"><span class="tag" style="background:rgba(59,130,246,0.2);color:#3b82f6;">Google</span></div>
+    </div>
+
+    <!-- 2025 -->
+    <div class="tl-year">2025</div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">DeepSeek-R1 + R1-Zero</span>
+      <div class="desc">⭐⭐⭐ <strong>纯 RL 涌现推理能力</strong>（GRPO），全开源 + 6 个蒸馏版（1.5B–70B）</div>
+      <div class="tags"><span class="tag tag-ds">DeepSeek</span><span class="tag tag-star">⭐⭐⭐ 历史性</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">MiniMax-01 (456B active / 4560B total)</span>
+      <div class="desc">⭐ <strong>Lightning + Softmax Hybrid</strong>，4M token context，开源</div>
+      <div class="tags"><span class="tag tag-mm">MiniMax</span><span class="tag tag-star">⭐ 架构突破</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">Qwen2.5-VL 多模态</span>
+      <div class="desc">动态分辨率 + M-RoPE (3D 位置编码) + 20min+ 视频理解</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">Kimi k1.5</span>
+      <div class="desc">⭐ Long-context RL (128K) + Long2Short 蒸馏 + 多模态推理</div>
+      <div class="tags"><span class="tag tag-kimi">Kimi</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">OpenAI o3-mini</span>
+      <div class="desc">推理模型轻量版，性价比优于 o1，可选 low/medium/high 推理等级</div>
+      <div class="tags"><span class="tag tag-oai">OpenAI</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">DeepSeek Janus-Pro</span>
+      <div class="desc">统一理解+生成的多模态模型，Decoupled Visual Encoder</div>
+      <div class="tags"><span class="tag tag-ds">DeepSeek</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">Mistral Small 3 (24B)</span>
+      <div class="desc">开源最强 24B 级模型，Apache 2.0</div>
+      <div class="tags"><span class="tag" style="background:rgba(6,182,212,0.2);color:#06b6d4;">Mistral</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">02 月</span> · <span class="name">Qwen2.5-Max (MoE 旗舰)</span>
+      <div class="desc">MoE 架构，追赶 DeepSeek-V3 / GPT-4o</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">02 月</span> · <span class="name">Slime (智谱/THUDM)</span>
+      <div class="desc">异步 RL 训练框架，SGLang (RadixAttention) + Megatron-LM 组合</div>
+      <div class="tags"><span class="tag tag-glm">智谱</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">02 月</span> · <span class="name">GPT-4.5 (Orion)</span>
+      <div class="desc">OpenAI 最大 Dense 模型，强调世界知识 + 低幻觉 + EQ</div>
+      <div class="tags"><span class="tag tag-oai">OpenAI</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">02 月</span> · <span class="name">GLM-Z1 / GLM-Z1-Air</span>
+      <div class="desc">智谱推理模型，Deep Thinking + Web Search 增强</div>
+      <div class="tags"><span class="tag tag-glm">智谱</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">03 月</span> · <span class="name">QwQ-32B 正式版</span>
+      <div class="desc">Apache 2.0 开源，AIME 2024: 79.5%，LiveCodeBench: 63.4%</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">03 月</span> · <span class="name">DeepSeek-V3-0324 更新</span>
+      <div class="desc">V3 能力刷新，推理/代码/数学显著提升</div>
+      <div class="tags"><span class="tag tag-ds">DeepSeek</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">03 月</span> · <span class="name">Gemini 2.5 Pro</span>
+      <div class="desc">Google 最强模型，内置 Thinking，代码/数学/推理全面领先</div>
+      <div class="tags"><span class="tag" style="background:rgba(59,130,246,0.2);color:#3b82f6;">Google</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">04 月</span> · <span class="name">Llama 4 Scout / Maverick</span>
+      <div class="desc">Meta MoE 架构转向，Scout 109B active/400B total，Maverick 更大</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span><span class="tag tag-star">⭐ Meta 首次 MoE</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">04 月</span> · <span class="name">Qwen3 系列 (0.6B–235B)</span>
+      <div class="desc">Thinking + Non-thinking 双模式统一，MoE 旗舰 235B (22B active)</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span><span class="tag tag-star">⭐</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">05 月</span> · <span class="name">DeepSeek-Prover-V2</span>
+      <div class="desc">形式化数学证明，IMO 级别能力</div>
+      <div class="tags"><span class="tag tag-ds">DeepSeek</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">05 月</span> · <span class="name">Claude 3.5 Opus</span>
+      <div class="desc">Anthropic 最强模型，复杂推理能力大幅提升</div>
+      <div class="tags"><span class="tag" style="background:rgba(217,119,6,0.2);color:#d97706;">Anthropic</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">06 月</span> · <span class="name">Qwen3-Coder / Qwen3-Math</span>
+      <div class="desc">Qwen3 代码/数学子系列</div>
+      <div class="tags"><span class="tag tag-qw">Qwen</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">07 月</span> · <span class="name">Claude 4 + o3 正式版</span>
+      <div class="desc">Claude 4 新一代旗舰 · o3 推理模型旗舰 ARC-AGI 突破</div>
+      <div class="tags"><span class="tag" style="background:rgba(217,119,6,0.2);color:#d97706;">Anthropic</span><span class="tag tag-oai">OpenAI</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">08 月</span> · <span class="name">Llama 4 Behemoth (训练中)</span>
+      <div class="desc">2T+ MoE 超大规模模型</div>
+      <div class="tags"><span class="tag tag-meta">Meta</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">09 月</span> · <span class="name">Gemini 2.5 Ultra</span>
+      <div class="desc">Google 最强推理模型</div>
+      <div class="tags"><span class="tag" style="background:rgba(59,130,246,0.2);color:#3b82f6;">Google</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">10-12 月</span> · <span class="name">各家持续迭代 ...</span>
+      <div class="desc">DeepSeek-V4 预告 · MiniMax-02 · Qwen3.5 · 各家 Agent 框架成熟</div>
+      <div class="tags"><span class="tag" style="background:rgba(250,204,21,0.15);color:var(--yellow);">行业加速期</span></div>
+    </div>
+
+    <!-- 2026 -->
+    <div class="tl-year">2026</div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">RWKV-7 稳定版 + RWKV-8 实验</span>
+      <div class="desc">广义 Delta Rule 成熟 · DeepEmbed 稀疏 MoE · ROSA 机制</div>
+      <div class="tags"><span class="tag" style="background:rgba(244,114,182,0.2);color:#ec4899;">RWKV</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">01 月</span> · <span class="name">Agent 框架生态成熟</span>
+      <div class="desc">MCP 协议统一 · Claude Computer Use 2.0 · 各家 Agent SDK</div>
+      <div class="tags"><span class="tag" style="background:rgba(56,189,248,0.15);color:var(--accent);">行业趋势</span></div>
+    </div>
+    <div class="tl-item">
+      <span class="date">02 月</span> · <span class="name">📍 当前状态 (2026.02.19)</span>
+      <div class="desc">推理模型普及 · MoE 标配 · Agent 框架爆发 · 多模态原生化 · RL 后训练标准化 · Hybrid 架构验证</div>
+      <div class="tags"><span class="tag" style="background:rgba(56,189,248,0.3);color:var(--accent);font-weight:700;">🔴 当前</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== COMPANIES =================== -->
+<section id="companies">
+  <h2><span class="icon">🏢</span> 各家技术详解 (截止 2026.02)</h2>
+
+  <div class="company-grid">
+    <!-- DeepSeek -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo ds">DS</div>
+        <div class="cc-info"><h3>DeepSeek（深度求索）</h3><p>「架构创新 + 工程极致」— 以少胜多的典范</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">DeepSeek-V1</span> <span class="model-date">2023.11</span><br><span class="model-detail">67B Dense，对标 Llama 70B</span></div></div>
+        <div class="model-row"><div><span class="model-name">DeepSeek-V2</span> <span class="model-date">2024.03</span><br><span class="model-detail">236B MoE (21B active) · <span class="highlight">MLA 压缩 KV 16×</span> · 细粒度 MoE (160 experts)</span></div></div>
+        <div class="model-row"><div><span class="model-name">DeepSeek-Coder-V2</span> <span class="model-date">2024.06</span><br><span class="model-detail">236B MoE 代码专项 · FIM 训练</span></div></div>
+        <div class="model-row"><div><span class="model-name">DeepSeek-V3</span> <span class="model-date">2024.12</span><br><span class="model-detail"><span class="highlight">671B MoE (37B active)</span> · MLA + MTP + FP8 · Aux-Loss-Free · <span class="highlight">$5.5M</span> 训练</span></div></div>
+        <div class="model-row"><div><span class="model-name">DeepSeek-R1</span> <span class="model-date">2025.01</span><br><span class="model-detail"><span class="highlight">⭐ 纯 RL 涌现推理 (GRPO)</span> · 全开源 · 6 蒸馏版 (1.5B–70B)</span></div></div>
+        <div class="model-row"><div><span class="model-name">Janus-Pro</span> <span class="model-date">2025.01</span><br><span class="model-detail">统一理解 + 生成多模态 · Decoupled Visual Encoder</span></div></div>
+        <div class="model-row"><div><span class="model-name">V3-0324</span> <span class="model-date">2025.03</span><br><span class="model-detail">V3 能力刷新 · 推理/代码/指令遵循增强</span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:var(--accent);">MLA (Multi-head Latent Attention)</strong>: KV 投影到低秩空间 d_c ≪ n_h × d_h，推理时仅缓存隐向量，按需解压。KV Cache 压缩 93.3%，等效 2.25 组 GQA。解耦 RoPE 解决位置编码耦合。</p>
+            <p><strong style="color:var(--accent);">DeepSeekMoE</strong>: 256 细粒度 experts + 1 shared expert + top-8 routing。Auxiliary-Loss-Free 负载均衡（bias 动态调整）。</p>
+            <p><strong style="color:var(--accent);">FP8 训练</strong>: GEMM + 通信减半，2048×H800 训练 671B 仅 $5.5M。</p>
+            <p><strong style="color:var(--accent);">MTP (Multi-Token Prediction)</strong>: 每步预测多个 token，提供更密集训练信号，推理时可作 speculative decoding draft head。</p>
+            <p><strong style="color:var(--accent);">GRPO</strong>: Group Relative Policy Optimization，去掉 critic 网络，显存减半。同 prompt 生成 G 个回答，用规则 reward 打分。</p>
+            <p><strong style="color:var(--accent);">DualPipe</strong>: 双向流水线，减少 pipeline bubble。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Qwen -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo qw">QW</div>
+        <div class="cc-info"><h3>Qwen（通义千问，阿里）</h3><p>「数据为王 + 全系列覆盖」— 社区生态最完整</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">Qwen 1.0</span> <span class="model-date">2023.09</span><br><span class="model-detail">7B/14B 开源，~3T tokens</span></div></div>
+        <div class="model-row"><div><span class="model-name">Qwen 1.5</span> <span class="model-date">2024.01</span><br><span class="model-detail">多语言增强，修复短板</span></div></div>
+        <div class="model-row"><div><span class="model-name">Qwen2</span> <span class="model-date">2024.05</span><br><span class="model-detail">全系列统一 GQA+RoPE+SwiGLU · 7T tokens · 0.5B-72B</span></div></div>
+        <div class="model-row"><div><span class="model-name">Qwen2.5</span> <span class="model-date">2024.09</span><br><span class="model-detail"><span class="highlight">18T tokens</span>（公开最大）· YaRN 1M · 合成数据 · Coder/Math 子系列</span></div></div>
+        <div class="model-row"><div><span class="model-name">QwQ-32B</span> <span class="model-date">2024.11→2025.03</span><br><span class="model-detail">推理模型 · AIME 79.5% · Apache 2.0 开源</span></div></div>
+        <div class="model-row"><div><span class="model-name">Qwen2.5-VL</span> <span class="model-date">2025.01</span><br><span class="model-detail">动态分辨率 + M-RoPE 3D 位置编码 · 20min+ 视频</span></div></div>
+        <div class="model-row"><div><span class="model-name">Qwen2.5-Max</span> <span class="model-date">2025.02</span><br><span class="model-detail">MoE 旗舰，追赶 DeepSeek-V3</span></div></div>
+        <div class="model-row"><div><span class="model-name">Qwen3 (0.6B–235B)</span> <span class="model-date">2025.04</span><br><span class="model-detail"><span class="highlight">Thinking + Non-thinking 双模式</span> · MoE 235B (22B active) · 119 语言</span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:var(--green);">数据 Scaling</strong>: 3T → 7T → 18T → 36T+ tokens 的持续扩展路线。数据质量 > 数据量，引入 3 重去重 + 质量分类器。</p>
+            <p><strong style="color:var(--green);">合成数据</strong>: 大规模引入代码/数学合成数据（Self-Instruct / Evol-Instruct），退火配比（后期增加代码数学比例）。</p>
+            <p><strong style="color:var(--green);">全系列矩阵</strong>: 0.5B–72B Dense + MoE，覆盖端侧→云端全场景。Coder / Math / VL 子系列。</p>
+            <p><strong style="color:var(--green);">YaRN</strong>: 频率插值扩展 RoPE，128K → 1M context，低成本短训长推。</p>
+            <p><strong style="color:var(--green);">Qwen3 双模式</strong>: 同一模型支持 Thinking（长 CoT 推理）和 Non-thinking（快速响应），用 /think 和 /no_think 切换。</p>
+            <p><strong style="color:var(--green);">开源策略</strong>: Apache 2.0 / Qwen License，HuggingFace 下载量最高的中文模型。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- GLM -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo glm">GL</div>
+        <div class="cc-info"><h3>GLM / ChatGLM（智谱 AI）</h3><p>「学术创新 + 多模态全栈」— 清华系驱动</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">ChatGLM-6B</span> <span class="model-date">2023.03</span><br><span class="model-detail">Prefix LM 架构，国产首个好用开源对话模型</span></div></div>
+        <div class="model-row"><div><span class="model-name">ChatGLM2/3</span> <span class="model-date">2023.07/10</span><br><span class="model-detail">引入 GQA，逐步转向 Causal LM</span></div></div>
+        <div class="model-row"><div><span class="model-name">GLM-4</span> <span class="model-date">2024.01</span><br><span class="model-detail">完全转向 Causal LM · 1M context (Long)</span></div></div>
+        <div class="model-row"><div><span class="model-name">CogVLM2 / CogVideoX</span> <span class="model-date">2024</span><br><span class="model-detail">Visual Expert 独立通道 · 3D VAE + DiT 视频生成</span></div></div>
+        <div class="model-row"><div><span class="model-name">AutoGLM</span> <span class="model-date">2024</span><br><span class="model-detail">Agent 模型，自动操作手机/浏览器</span></div></div>
+        <div class="model-row"><div><span class="model-name">GLM-Z1 / Z1-Air</span> <span class="model-date">2025.02</span><br><span class="model-detail"><span class="highlight">推理模型</span> · Deep Thinking + Web Search 增强</span></div></div>
+        <div class="model-row"><div><span class="model-name">Slime 框架</span> <span class="model-date">2025.02</span><br><span class="model-detail"><span class="highlight">异步 RL 训练框架</span> · SGLang + Megatron-LM · RadixAttention</span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:var(--orange);">架构转向</strong>: Prefix LM → Causal LM。Why: 社区工具链(vLLM/TGI)都针对 Causal LM 优化，Prefix LM 享受不到工程红利。</p>
+            <p><strong style="color:var(--orange);">CogVLM Visual Expert</strong>: 独立 Visual Expert FFN 解决视觉/文本模态冲突，而非共享。</p>
+            <p><strong style="color:var(--orange);">Slime 框架</strong>: 异步 RL 避免同步 RL 的 GPU 空闲。选 SGLang 而非 vLLM 是因为 RL 中同 prompt 生成 G 个 response，RadixAttention 对重复 prefix 缓存效率更高。</p>
+            <p><strong style="color:var(--orange);">GLM-Z1 推理模型</strong>: 配备 Deep Thinking 模式 + Web Search 联网检索，闭源 API。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Kimi -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo kimi">KM</div>
+        <div class="cc-info"><h3>Kimi（月之暗面 / Moonshot AI）</h3><p>「长上下文 = 核心壁垒」— Long-context 先行者</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">Kimi Chat</span> <span class="model-date">2023.10</span><br><span class="model-detail"><span class="highlight">200K context</span> · 国内首个产品化长上下文</span></div></div>
+        <div class="model-row"><div><span class="model-name">Kimi (迭代)</span> <span class="model-date">2024</span><br><span class="model-detail">持续优化 · KV Cache 分层存储 (HBM→DRAM→SSD) · Chunk Prefill</span></div></div>
+        <div class="model-row"><div><span class="model-name">k0-math</span> <span class="model-date">2025.01</span><br><span class="model-detail">数学推理专项模型</span></div></div>
+        <div class="model-row"><div><span class="model-name">Kimi k1.5</span> <span class="model-date">2025.01</span><br><span class="model-detail"><span class="highlight">Long-context RL (128K)</span> · Long2Short 蒸馏 · 多模态推理</span></div></div>
+        <div class="model-row"><div><span class="model-name">k1.5 Long Thinking</span> <span class="model-date">2025.02</span><br><span class="model-detail">超长思维链，思考步骤可达数千步</span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:var(--pink);">KV Cache 分层存储</strong>: HBM → DRAM → SSD 三级缓存，支持超长文档。</p>
+            <p><strong style="color:var(--pink);">Long-context RL</strong>: 业界首个在 RL 中跑到 128K context 的方案。CoT 越长质量越高，128K 让模型学会更长推理链。</p>
+            <p><strong style="color:var(--pink);">Long2Short 蒸馏</strong>: 长 CoT 模型推理成本高，蒸馏到短 CoT 模型保留质量降低成本。</p>
+            <p><strong style="color:var(--pink);">Sliding Window + Global Attention</strong>: 混合注意力机制适配超长上下文。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- MiniMax -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo mm">MM</div>
+        <div class="cc-info"><h3>MiniMax</h3><p>「架构突破 > 数据堆叠」— 4M context 记录保持者</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">abab 系列</span> <span class="model-date">2023</span><br><span class="model-detail">对标 GPT-3.5，闭源 API 服务</span></div></div>
+        <div class="model-row"><div><span class="model-name">abab6.5</span> <span class="model-date">2024.01</span><br><span class="model-detail">Lightning Attention 初版试水，验证 Hybrid 可行性</span></div></div>
+        <div class="model-row"><div><span class="model-name">MiniMax-01</span> <span class="model-date">2025.01</span><br><span class="model-detail"><span class="highlight">4560B MoE (45.9B active)</span> · Lightning+Softmax Hybrid · <span class="highlight">4M context</span></span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:var(--purple);">Lightning Attention (Linear)</strong>: O(n) 复杂度，KV 信息压缩在固定大小 running state 中。</p>
+            <p><strong style="color:var(--purple);">Hybrid 分层设计</strong>: Layer 1-27 Lightning Attention (2/3)，Layer 28-80 Softmax Attention (1/3)。底层做局部特征提取不需精确 attention，顶层需精确推理和检索。</p>
+            <p><strong style="color:var(--purple);">4M context</strong>: 公开模型最长。Linear Attention 层不需 O(n²)，渐进式扩展 4K→32K→512K→4M 节省 90%+ compute。</p>
+            <p><strong style="color:var(--purple);">MoE</strong>: 32 experts, top-2 routing, 45.9B active / 4560B total。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- OpenAI -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo oai">OA</div>
+        <div class="cc-info"><h3>OpenAI</h3><p>「定义标杆 + 推理先驱」— 闭源最强</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">GPT-4</span> <span class="model-date">2023.03</span><br><span class="model-detail">多模态旗舰，定义行业标杆</span></div></div>
+        <div class="model-row"><div><span class="model-name">GPT-4 Turbo</span> <span class="model-date">2023.11</span><br><span class="model-detail">128K context · JSON mode · 价格大幅降低</span></div></div>
+        <div class="model-row"><div><span class="model-name">GPT-4o</span> <span class="model-date">2024.05</span><br><span class="model-detail"><span class="highlight">原生多模态</span>（文本+音频+视觉）· 速度 2× · 价格 -50%</span></div></div>
+        <div class="model-row"><div><span class="model-name">o1-preview / o1</span> <span class="model-date">2024.09/12</span><br><span class="model-detail"><span class="highlight">⭐ 推理模型开创者</span> · AIME 96.4% · 内部 Chain-of-Thought</span></div></div>
+        <div class="model-row"><div><span class="model-name">o3-mini</span> <span class="model-date">2025.01</span><br><span class="model-detail">推理轻量版 · low/medium/high 推理等级 · 性价比优于 o1</span></div></div>
+        <div class="model-row"><div><span class="model-name">GPT-4.5 (Orion)</span> <span class="model-date">2025.02</span><br><span class="model-detail">最大 Dense 模型 · 世界知识 + 低幻觉 + EQ</span></div></div>
+      </div>
+    </div>
+
+    <!-- Meta -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo meta">MT</div>
+        <div class="cc-info"><h3>Meta (Llama)</h3><p>「开源灯塔 + 架构标准制定者」</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">Llama 1</span> <span class="model-date">2023.02</span><br><span class="model-detail">7B–65B · 开源 LLM 号角</span></div></div>
+        <div class="model-row"><div><span class="model-name">Llama 2</span> <span class="model-date">2023.07</span><br><span class="model-detail">正式商用 · 首次公开 RLHF 细节</span></div></div>
+        <div class="model-row"><div><span class="model-name">Llama 3</span> <span class="model-date">2024.04</span><br><span class="model-detail">15T tokens · 128K context · GQA+SwiGLU 标配</span></div></div>
+        <div class="model-row"><div><span class="model-name">Llama 3.1 (405B)</span> <span class="model-date">2024.07</span><br><span class="model-detail"><span class="highlight">开源最大 Dense</span> · 4D 并行 (TP+PP+CP+DP)</span></div></div>
+        <div class="model-row"><div><span class="model-name">Llama 3.2</span> <span class="model-date">2024.09</span><br><span class="model-detail">1B/3B 端侧 + 11B/90B Vision</span></div></div>
+        <div class="model-row"><div><span class="model-name">Llama 3.3 70B</span> <span class="model-date">2024.12</span><br><span class="model-detail">性能追平 405B · 推理成本大幅下降</span></div></div>
+        <div class="model-row"><div><span class="model-name">Llama 4 Scout/Maverick</span> <span class="model-date">2025.04</span><br><span class="model-detail"><span class="highlight">Meta 首次 MoE</span> · Scout 109B active · 10M context</span></div></div>
+      </div>
+    </div>
+
+    <!-- Google -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo ggl">GG</div>
+        <div class="cc-info"><h3>Google (Gemini)</h3><p>「原生多模态 + 超长上下文 + 搜索协同」</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">Gemini 1.0</span> <span class="model-date">2023.12</span><br><span class="model-detail">Ultra/Pro/Nano 三档多模态</span></div></div>
+        <div class="model-row"><div><span class="model-name">Gemini 1.5 Pro</span> <span class="model-date">2024.02</span><br><span class="model-detail"><span class="highlight">1M token context 原生</span> · MoE 架构</span></div></div>
+        <div class="model-row"><div><span class="model-name">Gemini 2.0 Flash</span> <span class="model-date">2024.12</span><br><span class="model-detail">原生多模态 + Agent · 速度 2× · 1M context</span></div></div>
+        <div class="model-row"><div><span class="model-name">Gemini 2.5 Pro</span> <span class="model-date">2025.03</span><br><span class="model-detail"><span class="highlight">内置 Thinking</span> · 最强推理+代码+数学</span></div></div>
+        <div class="model-row"><div><span class="model-name">Gemini 2.5 Ultra (预期)</span> <span class="model-date">2025 Q3</span><br><span class="model-detail">Google 最强旗舰推理模型</span></div></div>
+      </div>
+    </div>
+
+    <!-- Anthropic -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo ant">AC</div>
+        <div class="cc-info"><h3>Anthropic (Claude)</h3><p>「安全对齐 + 编程最强 + Agent 先锋」</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">Claude 2</span> <span class="model-date">2023.07</span><br><span class="model-detail">100K context · 长文档理解标杆</span></div></div>
+        <div class="model-row"><div><span class="model-name">Claude 3 (Opus/Sonnet/Haiku)</span> <span class="model-date">2024.03</span><br><span class="model-detail">三档矩阵 · Opus 追平 GPT-4 · 200K context</span></div></div>
+        <div class="model-row"><div><span class="model-name">Claude 3.5 Sonnet</span> <span class="model-date">2024.06</span><br><span class="model-detail"><span class="highlight">⭐ 编程最强</span> · 超越 GPT-4o · 200K context</span></div></div>
+        <div class="model-row"><div><span class="model-name">Claude 3.5 Sonnet v2</span> <span class="model-date">2024.10</span><br><span class="model-detail"><span class="highlight">Computer Use</span> · SWE-bench 49% · Agent 操作电脑</span></div></div>
+        <div class="model-row"><div><span class="model-name">Claude 3.5 Opus</span> <span class="model-date">2025 Q2</span><br><span class="model-detail">最强推理 + 复杂任务</span></div></div>
+        <div class="model-row"><div><span class="model-name">Claude 4</span> <span class="model-date">2025 Q3</span><br><span class="model-detail">新一代旗舰 · 编程/推理大幅提升</span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:#d97706;">Constitutional AI</strong>: Anthropic 独创的安全对齐方法，让 AI 自我审查和修正。</p>
+            <p><strong style="color:#d97706;">Computer Use</strong>: 首个支持 Agent 直接操作电脑（鼠标/键盘/截屏）的大模型。</p>
+            <p><strong style="color:#d97706;">200K Context</strong>: 原生 200K token 上下文，长文档处理能力强。</p>
+            <p><strong style="color:#d97706;">编程能力</strong>: SWE-bench 49% (v2), 代码理解/生成能力持续领先。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Mistral -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo mst">MS</div>
+        <div class="cc-info"><h3>Mistral AI</h3><p>「欧洲之光 · 小模型大性能 · 开源+商业并行」</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">Mistral 7B</span> <span class="model-date">2023.10</span><br><span class="model-detail"><span class="highlight">Sliding Window Attention</span> · 开源小模型标杆</span></div></div>
+        <div class="model-row"><div><span class="model-name">Mixtral 8x7B</span> <span class="model-date">2023.12</span><br><span class="model-detail"><span class="highlight">开源 MoE 先驱</span> · 8 experts, top-2 · 性价比炸裂</span></div></div>
+        <div class="model-row"><div><span class="model-name">Mistral Large 2</span> <span class="model-date">2024.07</span><br><span class="model-detail">123B · Function Calling · 闭源对标 GPT-4</span></div></div>
+        <div class="model-row"><div><span class="model-name">Mistral Small 3</span> <span class="model-date">2025.01</span><br><span class="model-detail"><span class="highlight">24B, Apache 2.0</span> · 开源最强 24B 级模型</span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:#06b6d4;">Sliding Window Attention</strong>: Mistral 7B 首次引入，限制 attention 范围降低计算量。</p>
+            <p><strong style="color:#06b6d4;">MoE 先驱</strong>: Mixtral 证明开源 MoE 可行，启发后来的 DeepSeek/Qwen MoE。</p>
+            <p><strong style="color:#06b6d4;">双轨策略</strong>: 开源小模型（7B/24B）+ 闭源大模型（Large 2），覆盖不同市场。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- RWKV -->
+    <div class="company-card">
+      <div class="cc-header">
+        <div class="cc-logo" style="background:linear-gradient(135deg, #ec4899, #f472b6);">RW</div>
+        <div class="cc-info"><h3>RWKV</h3><p>「RNN 复兴者 · 恒定内存 · 无限上下文」</p></div>
+      </div>
+      <div class="cc-body">
+        <div class="model-row"><div><span class="model-name">RWKV-4</span> <span class="model-date">2023.05</span><br><span class="model-detail">首个实用纯 RNN 语言模型 · EMNLP 2023 收录</span></div></div>
+        <div class="model-row"><div><span class="model-name">RWKV-5 (Eagle)</span> <span class="model-date">2024 Q1</span><br><span class="model-detail">Multi-headed Linear Attention 变体</span></div></div>
+        <div class="model-row"><div><span class="model-name">RWKV-6 (Finch)</span> <span class="model-date">2024.04</span><br><span class="model-detail">矩阵值状态 + 动态递归 · 接近 Transformer</span></div></div>
+        <div class="model-row"><div><span class="model-name">RWKV-7 (Goose)</span> <span class="model-date">2025.03</span><br><span class="model-detail"><span class="highlight">⭐ 广义 Delta Rule</span> · 3B SoTA · 超越 Transformer 表达力</span></div></div>
+        <div class="model-row"><div><span class="model-name">RWKV-8 (实验中)</span> <span class="model-date">2026</span><br><span class="model-detail">DeepEmbed 稀疏 MoE · ROSA 机制 · Hybrid 探索</span></div></div>
+        <details style="margin-top:8px;">
+          <summary>🔑 核心技术栈</summary>
+          <div class="detail-body" style="font-size:0.88rem;color:var(--text2);">
+            <p><strong style="color:var(--pink);">广义 Delta Rule (RWKV-7)</strong>: 选择性状态更新，2 层实现 NC¹ 复杂度的 S₅ 状态跟踪，4 层可识别所有正则语言——表达力超越 Transformer 的 TC⁰ 限制。</p>
+            <p><strong style="color:var(--pink);">恒定推理</strong>: O(1) 显存占用 + O(1) 每 token 推理时间，不随上下文长度增长。理论上支持无限上下文。</p>
+            <p><strong style="color:var(--pink);">100% 无自注意力</strong>: 纯 RNN 架构但支持并行训练（通过 chunk-wise 并行），训练效率接近 Transformer。</p>
+            <p><strong style="color:var(--pink);">RWKV-8 探索方向</strong>: DeepEmbed 稀疏 MoE（端侧友好）、DeepEmbedAttention（精简 KV 缓存）、ROSA 在线后缀自动机（新型记忆机制）。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== ARCHITECTURE =================== -->
+<section id="architecture">
+  <h2><span class="icon">🔧</span> 核心架构演进</h2>
+
+  <h3>Attention 机制演进路径</h3>
+  <div class="evolution-chain">
+    <div class="evo-node">MHA</div> <div class="evo-arrow">→</div>
+    <div class="evo-node">MQA</div> <div class="evo-arrow">→</div>
+    <div class="evo-node current">GQA (Llama/Qwen 标配)</div> <div class="evo-arrow">→</div>
+    <div class="evo-node current">MLA (DeepSeek 创新)</div> <div class="evo-arrow">→</div>
+    <div class="evo-node current">Hybrid (Lightning+Softmax)</div> <div class="evo-arrow">→</div>
+    <div class="evo-node future">SSM + Attention 混合?</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>方案</th><th>KV 存储</th><th>压缩比</th><th>精度</th><th>计算复杂度</th><th>代表模型</th></tr></thead>
+      <tbody>
+        <tr><td><strong>MHA</strong></td><td>h × d_h × L</td><td>1×</td><td class="cell-good">基准</td><td>O(n²)</td><td>GPT-4, 早期模型</td></tr>
+        <tr><td><strong>MQA</strong></td><td>d_h × L</td><td>~h×</td><td class="cell-warn">较低</td><td>O(n²)</td><td>PaLM, Falcon</td></tr>
+        <tr><td><strong>GQA-8</strong></td><td>(h/8) × d_h × L</td><td>~8×</td><td class="cell-good">极小损失</td><td>O(n²)</td><td>Llama 3, Qwen2.5</td></tr>
+        <tr><td><strong>MLA</strong></td><td class="cell-star">d_c × L (d_c ≪ h×d_h)</td><td class="cell-star">~16×</td><td class="cell-good">几乎无损</td><td>O(n²)</td><td>DeepSeek V2/V3</td></tr>
+        <tr><td><strong>Lightning (Linear)</strong></td><td class="cell-star">固定大小 state</td><td class="cell-star">部分层 ∞</td><td class="cell-warn">底层略降</td><td class="cell-star">O(n)</td><td>MiniMax-01</td></tr>
+        <tr><td><strong>Mamba (SSM)</strong></td><td class="cell-star">固定 state</td><td class="cell-star">∞</td><td class="cell-warn">检索能力弱</td><td class="cell-star">O(n)</td><td>Mamba, Jamba</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>架构核心差异图解</h3>
+  <div class="arch-diagram">
+    <div class="arch-box">
+      <h4>DeepSeek-V3 架构</h4>
+      <div class="arch-layer mla">🧠 MLA (Multi-head Latent Attention) — KV 低秩压缩 16×</div>
+      <div class="arch-layer moe">⚡ DeepSeekMoE — 256 experts, top-8, shared expert</div>
+      <div class="arch-layer" style="background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.3);">📊 MTP — Multi-Token Prediction</div>
+      <div class="arch-layer" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);">🔧 FP8 训练 + Aux-Loss-Free + DualPipe</div>
+      <p style="color:var(--text2);font-size:0.82rem;margin-top:8px;">671B total → 37B active | 128K context | $5.5M</p>
+    </div>
+    <div class="arch-box">
+      <h4>MiniMax-01 Hybrid 架构</h4>
+      <div class="arch-layer linear">⚡ Layer 1-27: Lightning Attention (Linear) — O(n), 2/3 层</div>
+      <div class="arch-layer softmax">🧠 Layer 28-80: Softmax Attention — O(n²), 1/3 层</div>
+      <div class="arch-layer moe">⚡ MoE — 32 experts, top-2</div>
+      <div class="arch-layer" style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);">🔄 渐进式长度扩展: 4K → 32K → 512K → 4M</div>
+      <p style="color:var(--text2);font-size:0.82rem;margin-top:8px;">4560B total → 45.9B active | <strong>4M context</strong></p>
+    </div>
+    <div class="arch-box">
+      <h4>Qwen2.5/3 + Llama 标准架构</h4>
+      <div class="arch-layer softmax">🧠 GQA (Grouped Query Attention) — 标准 KV 压缩</div>
+      <div class="arch-layer" style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);">🔗 SwiGLU FFN + RMSNorm + Pre-Norm</div>
+      <div class="arch-layer" style="background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);">📐 RoPE 位置编码 (+ YaRN 扩展)</div>
+      <div class="arch-layer" style="background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.3);">📊 Causal LM 预训练</div>
+      <p style="color:var(--text2);font-size:0.82rem;margin-top:8px;">成为行业「标准架构」 — 几乎所有新模型都采用</p>
+    </div>
+    <div class="arch-box">
+      <h4>RWKV-7 (Goose)</h4>
+      <div class="arch-layer ssm">🌀 广义 Delta Rule — 无自注意力机制</div>
+      <div class="arch-layer" style="background:rgba(244,114,182,0.1);border:1px solid rgba(244,114,182,0.3);">📊 恒定显存 + 恒定推理速度 + "无限"上下文</div>
+      <div class="arch-layer" style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);">💡 2 层实现 NC¹ 复杂度, 4 层识别所有正则语言</div>
+      <p style="color:var(--text2);font-size:0.82rem;margin-top:8px;">100% RNN, 但可并行训练 | RWKV-8 实验中</p>
+    </div>
+  </div>
+</section>
+
+<!-- =================== BENCHMARKS =================== -->
+<section id="benchmarks">
+  <h2><span class="icon">📊</span> 性能基准对比 (2025 年数据)</h2>
+  <p style="color:var(--text2);margin-bottom:20px;">注：数据来源各家技术报告和公开 Benchmark，部分为估计值。推理模型和基座模型分开对比。</p>
+
+  <div class="tab-header">
+    <button class="tab-btn active" onclick="showTab('bench-base')">基座模型</button>
+    <button class="tab-btn" onclick="showTab('bench-reason')">推理模型</button>
+    <button class="tab-btn" onclick="showTab('bench-code')">代码能力</button>
+  </div>
+
+  <div id="bench-base" class="tab-content active">
+    <h3>MMLU (知识理解)</h3>
+    <div class="bench-row"><div class="bench-label">GPT-4o</div><div class="bench-bar-wrap"><div class="bench-bar oai" style="width:88.7%">88.7</div></div></div>
+    <div class="bench-row"><div class="bench-label">DeepSeek-V3</div><div class="bench-bar-wrap"><div class="bench-bar ds" style="width:88.5%">88.5</div></div></div>
+    <div class="bench-row"><div class="bench-label">Qwen2.5-72B</div><div class="bench-bar-wrap"><div class="bench-bar qw" style="width:86.1%">86.1</div></div></div>
+    <div class="bench-row"><div class="bench-label">Llama 3.1 405B</div><div class="bench-bar-wrap"><div class="bench-bar meta" style="width:87.3%">87.3</div></div></div>
+    <div class="bench-row"><div class="bench-label">Claude 3.5 Sonnet</div><div class="bench-bar-wrap"><div class="bench-bar" style="width:88.7%;background:linear-gradient(90deg,#b45309,#d97706)">88.7</div></div></div>
+    <div class="bench-row"><div class="bench-label">Gemini 1.5 Pro</div><div class="bench-bar-wrap"><div class="bench-bar ggl" style="width:85.9%">85.9</div></div></div>
+
+    <h3 style="margin-top:24px;">MATH-500</h3>
+    <div class="bench-row"><div class="bench-label">DeepSeek-V3</div><div class="bench-bar-wrap"><div class="bench-bar ds" style="width:90.2%">90.2</div></div></div>
+    <div class="bench-row"><div class="bench-label">Qwen2.5-72B</div><div class="bench-bar-wrap"><div class="bench-bar qw" style="width:83.1%">83.1</div></div></div>
+    <div class="bench-row"><div class="bench-label">GPT-4o</div><div class="bench-bar-wrap"><div class="bench-bar oai" style="width:74.6%">74.6</div></div></div>
+    <div class="bench-row"><div class="bench-label">Llama 3.1 405B</div><div class="bench-bar-wrap"><div class="bench-bar meta" style="width:73.8%">73.8</div></div></div>
+    <div class="bench-row"><div class="bench-label">Claude 3.5 Sonnet</div><div class="bench-bar-wrap"><div class="bench-bar" style="width:78.3%;background:linear-gradient(90deg,#b45309,#d97706)">78.3</div></div></div>
+  </div>
+
+  <div id="bench-reason" class="tab-content">
+    <h3>AIME 2024 (数学竞赛推理)</h3>
+    <div class="bench-row"><div class="bench-label">OpenAI o1</div><div class="bench-bar-wrap"><div class="bench-bar oai" style="width:96.4%">96.4%</div></div></div>
+    <div class="bench-row"><div class="bench-label">DeepSeek-R1</div><div class="bench-bar-wrap"><div class="bench-bar ds" style="width:79.8%">79.8%</div></div></div>
+    <div class="bench-row"><div class="bench-label">QwQ-32B</div><div class="bench-bar-wrap"><div class="bench-bar qw" style="width:79.5%">79.5%</div></div></div>
+    <div class="bench-row"><div class="bench-label">Kimi k1.5</div><div class="bench-bar-wrap"><div class="bench-bar kimi" style="width:77.5%">77.5%</div></div></div>
+    <div class="bench-row"><div class="bench-label">o3-mini (high)</div><div class="bench-bar-wrap"><div class="bench-bar oai" style="width:87.3%">87.3%</div></div></div>
+    <div class="bench-row"><div class="bench-label">R1-Distill-32B</div><div class="bench-bar-wrap"><div class="bench-bar ds" style="width:72.6%">72.6%</div></div></div>
+
+    <h3 style="margin-top:24px;">Codeforces Rating (编程竞赛)</h3>
+    <div class="bench-row"><div class="bench-label">OpenAI o1</div><div class="bench-bar-wrap"><div class="bench-bar oai" style="width:90.8%">1891</div></div></div>
+    <div class="bench-row"><div class="bench-label">DeepSeek-R1</div><div class="bench-bar-wrap"><div class="bench-bar ds" style="width:79.6%">2029</div></div></div>
+    <div class="bench-row"><div class="bench-label">Kimi k1.5</div><div class="bench-bar-wrap"><div class="bench-bar kimi" style="width:62%">1517</div></div></div>
+  </div>
+
+  <div id="bench-code" class="tab-content">
+    <h3>HumanEval (代码生成)</h3>
+    <div class="bench-row"><div class="bench-label">DeepSeek-V3</div><div class="bench-bar-wrap"><div class="bench-bar ds" style="width:90%">90.2%</div></div></div>
+    <div class="bench-row"><div class="bench-label">Qwen2.5-Coder-32B</div><div class="bench-bar-wrap"><div class="bench-bar qw" style="width:92.7%">92.7%</div></div></div>
+    <div class="bench-row"><div class="bench-label">GPT-4o</div><div class="bench-bar-wrap"><div class="bench-bar oai" style="width:90.2%">90.2%</div></div></div>
+    <div class="bench-row"><div class="bench-label">Claude 3.5 Sonnet</div><div class="bench-bar-wrap"><div class="bench-bar" style="width:93.7%;background:linear-gradient(90deg,#b45309,#d97706)">93.7%</div></div></div>
+    <div class="bench-row"><div class="bench-label">Llama 3.1 405B</div><div class="bench-bar-wrap"><div class="bench-bar meta" style="width:89%">89.0%</div></div></div>
+
+    <h3 style="margin-top:24px;">LiveCodeBench (动态编程评测)</h3>
+    <div class="bench-row"><div class="bench-label">DeepSeek-V3</div><div class="bench-bar-wrap"><div class="bench-bar ds" style="width:70%">40.5</div></div></div>
+    <div class="bench-row"><div class="bench-label">Qwen2.5-Coder-32B</div><div class="bench-bar-wrap"><div class="bench-bar qw" style="width:55%">32.1</div></div></div>
+    <div class="bench-row"><div class="bench-label">Claude 3.5 Sonnet</div><div class="bench-bar-wrap"><div class="bench-bar" style="width:65%;background:linear-gradient(90deg,#b45309,#d97706)">38.9</div></div></div>
+  </div>
+</section>
+
+<!-- =================== COMPARISON =================== -->
+<section id="comparison">
+  <h2><span class="icon">⚔️</span> 横向深度对比</h2>
+
+  <div class="tab-header">
+    <button class="tab-btn active" onclick="showTab('cmp-arch')">Attention 机制</button>
+    <button class="tab-btn" onclick="showTab('cmp-data')">数据策略</button>
+    <button class="tab-btn" onclick="showTab('cmp-long')">长上下文</button>
+    <button class="tab-btn" onclick="showTab('cmp-moe')">MoE 设计</button>
+    <button class="tab-btn" onclick="showTab('cmp-rl')">对齐/RL</button>
+    <button class="tab-btn" onclick="showTab('cmp-cost')">训练成本</button>
+    <button class="tab-btn" onclick="showTab('cmp-open')">开源生态</button>
+  </div>
+
+  <div id="cmp-arch" class="tab-content active">
+    <div class="table-wrap"><table>
+      <thead><tr><th>时期</th><th>DeepSeek</th><th>Qwen</th><th>MiniMax</th><th>Kimi</th><th>GLM</th><th>Llama</th><th>RWKV</th></tr></thead>
+      <tbody>
+        <tr><td>2023</td><td>MHA</td><td>MHA</td><td>Softmax</td><td>混合*</td><td>Prefix LM</td><td>GQA (Llama2)</td><td>WKV (v4)</td></tr>
+        <tr><td>2024 H1</td><td class="cell-star">MLA (V2) ⭐</td><td>GQA (Qwen2)</td><td>Lightning 初版</td><td>Sliding+Global</td><td>GQA (GLM-4)</td><td>GQA (Llama3)</td><td>矩阵状态 (v6)</td></tr>
+        <tr><td>2024 H2</td><td class="cell-star">MLA (V3)</td><td>GQA (Qwen2.5)</td><td>Lightning</td><td>持续优化</td><td>GQA</td><td>GQA</td><td>Delta Rule (v7 dev)</td></tr>
+        <tr><td>2025</td><td class="cell-star">MLA</td><td>GQA + MoE</td><td class="cell-star">Hybrid 成熟 ⭐</td><td>长 ctx RL</td><td>GQA + Slime RL</td><td>GQA + MoE (Llama4)</td><td class="cell-star">广义 Delta ⭐</td></tr>
+        <tr><td>2026</td><td>MLA</td><td>GQA + MoE</td><td>Hybrid v2</td><td>长 ctx RL</td><td>GQA</td><td>MoE</td><td>v8 Hybrid 探索</td></tr>
+      </tbody>
+    </table></div>
+    <div class="insight-box">
+      <h4>💡 关键洞察</h4>
+      <ul>
+        <li><strong>MLA vs GQA</strong>: 都是压缩 KV Cache，MLA 更激进（16× vs 8×），但实现复杂度更高</li>
+        <li><strong>Lightning Attention</strong>: 唯一从根本改变 attention 计算方式的路线</li>
+        <li><strong>趋同</strong>: 所有人收敛到 RoPE + SwiGLU + RMSNorm + Pre-Norm（"Llama 架构"成标准）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="cmp-data" class="tab-content">
+    <div class="table-wrap"><table>
+      <thead><tr><th>维度</th><th>DeepSeek</th><th>Qwen</th><th>Llama 3</th><th>GLM</th><th>MiniMax</th></tr></thead>
+      <tbody>
+        <tr><td><strong>预训练规模</strong></td><td>14.8T</td><td class="cell-star">18T ⭐</td><td>15T</td><td class="cell-na">未公开</td><td class="cell-na">未公开</td></tr>
+        <tr><td><strong>合成数据</strong></td><td>✅ 数学+代码</td><td class="cell-star">✅ 大量 ⭐</td><td>✅ 代码</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>数据筛选</strong></td><td>质量分类器</td><td>Llama 式 bootstrap</td><td>3 重去重</td><td class="cell-na">未公开</td><td class="cell-na">未公开</td></tr>
+        <tr><td><strong>配比策略</strong></td><td>领域增强</td><td class="cell-star">退火配比 ⭐</td><td>退火配比</td><td class="cell-na">未公开</td><td class="cell-na">未公开</td></tr>
+        <tr><td><strong>代码训练</strong></td><td>FIM + 执行验证</td><td>FIM + TIR</td><td>FIM</td><td>FIM</td><td class="cell-na">未公开</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div id="cmp-long" class="tab-content">
+    <div class="table-wrap"><table>
+      <thead><tr><th>维度</th><th>Kimi</th><th>MiniMax</th><th>Qwen</th><th>DeepSeek</th><th>Gemini</th><th>Llama 4</th><th>RWKV-7</th></tr></thead>
+      <tbody>
+        <tr><td><strong>最长 context</strong></td><td>2M</td><td class="cell-star">4M ⭐</td><td>1M (Turbo)</td><td>128K</td><td>1M (2M exp)</td><td class="cell-star">10M ⭐</td><td class="cell-star">∞ (理论)</td></tr>
+        <tr><td><strong>扩展方法</strong></td><td>工程 + Offload</td><td class="cell-star">Hybrid Attention</td><td>YaRN</td><td>RoPE ABF</td><td>原生训练</td><td>原生训练</td><td class="cell-star">RNN 恒定 state</td></tr>
+        <tr><td><strong>KV 存储</strong></td><td>分层 HBM→SSD</td><td>Linear 层无需 KV</td><td>标准</td><td>MLA 压缩</td><td>未公开</td><td>MoE 路由</td><td class="cell-star">无 KV (固定 state)</td></tr>
+        <tr><td><strong>计算复杂度</strong></td><td>O(n²) + 优化</td><td>O(n) + O(n²) 混合</td><td>O(n²)</td><td>O(n²)</td><td>O(n²)</td><td>O(n²)</td><td class="cell-star">O(n)</td></tr>
+        <tr><td><strong>代价</strong></td><td>推理慢(Offload)</td><td>底层精度略降</td><td>YaRN 需微调</td><td>128K 已够</td><td>计算成本高</td><td>新架构</td><td class="cell-warn">检索精度受限</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div id="cmp-moe" class="tab-content">
+    <div class="table-wrap"><table>
+      <thead><tr><th>维度</th><th>DeepSeek-V3</th><th>MiniMax-01</th><th>Mixtral</th><th>Qwen3-235B</th><th>Llama 4</th></tr></thead>
+      <tbody>
+        <tr><td><strong>总参数</strong></td><td>671B</td><td>4560B</td><td>46.7B</td><td>~235B</td><td>~400B+</td></tr>
+        <tr><td><strong>激活参数</strong></td><td>37B</td><td>45.9B</td><td>13B</td><td>22B</td><td>109B</td></tr>
+        <tr><td><strong>Expert 数</strong></td><td class="cell-star">256 ⭐</td><td>32</td><td>8</td><td>128</td><td>16</td></tr>
+        <tr><td><strong>Top-K</strong></td><td>8</td><td>2</td><td>2</td><td>8</td><td>1</td></tr>
+        <tr><td><strong>Shared Expert</strong></td><td>✅ 1 个</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
+        <tr><td><strong>负载均衡</strong></td><td class="cell-star">Bias 动态调整</td><td>Aux Loss</td><td>Aux Loss</td><td>未公开</td><td>未公开</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div id="cmp-rl" class="tab-content">
+    <div class="table-wrap"><table>
+      <thead><tr><th>维度</th><th>DeepSeek-R1</th><th>Qwen/QwQ</th><th>Kimi k1.5</th><th>GLM-Z1/Slime</th><th>OpenAI o1/o3</th></tr></thead>
+      <tbody>
+        <tr><td><strong>RL 方法</strong></td><td class="cell-star">GRPO (纯 RL)</td><td>SFT + RL</td><td class="cell-star">Long-context RL</td><td>异步 RL</td><td>未公开 (大量 RL)</td></tr>
+        <tr><td><strong>Reward</strong></td><td>规则 reward</td><td>Rule + Model</td><td>Rule + Model + Length</td><td>未公开</td><td>未公开 (PRM?)</td></tr>
+        <tr><td><strong>Critic 网络</strong></td><td>❌ 不需要</td><td>需要</td><td>需要</td><td>未公开</td><td>未公开</td></tr>
+        <tr><td><strong>RL Context</strong></td><td>标准 (8-16K)</td><td>标准</td><td class="cell-star">128K ⭐</td><td>异步混合</td><td>未公开</td></tr>
+        <tr><td><strong>开源</strong></td><td class="cell-good">✅ 全开源</td><td class="cell-good">✅ QwQ 开源</td><td>❌ 闭源</td><td class="cell-good">✅ Slime 框架</td><td>❌ 闭源</td></tr>
+        <tr><td><strong>蒸馏模型</strong></td><td class="cell-star">6 个 (1.5B–70B)</td><td>—</td><td>Long2Short</td><td>—</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div id="cmp-cost" class="tab-content">
+    <div class="table-wrap"><table>
+      <thead><tr><th>模型</th><th>参数量</th><th>训练成本</th><th>GPU</th><th>核心省钱手段</th></tr></thead>
+      <tbody>
+        <tr><td><strong>DeepSeek-V3</strong></td><td>671B</td><td class="cell-star">$5.5M ⭐</td><td>2048 H800</td><td>FP8 + MoE + DualPipe</td></tr>
+        <tr><td><strong>Llama 3.1 405B</strong></td><td>405B</td><td>~$100M+</td><td>16384 H100</td><td>纯暴力堆资源</td></tr>
+        <tr><td><strong>Qwen2.5-72B</strong></td><td>72B</td><td class="cell-na">~$10M+ (估)</td><td>未公开</td><td>数据工程</td></tr>
+        <tr><td><strong>MiniMax-01</strong></td><td>4560B</td><td class="cell-na">~$20-50M (估)</td><td>未公开</td><td>Hybrid Attention</td></tr>
+        <tr><td><strong>GPT-4</strong></td><td>~1.8T (传)</td><td class="cell-na">~$100M+ (估)</td><td>~25000 A100</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div id="cmp-open" class="tab-content">
+    <div class="table-wrap"><table>
+      <thead><tr><th>维度</th><th>Qwen</th><th>DeepSeek</th><th>Llama</th><th>GLM</th><th>MiniMax</th></tr></thead>
+      <tbody>
+        <tr><td><strong>许可证</strong></td><td class="cell-good">Apache 2.0 ⭐</td><td class="cell-good">MIT ⭐</td><td>Llama License</td><td>GLM License</td><td>开放权重</td></tr>
+        <tr><td><strong>模型矩阵</strong></td><td class="cell-star">⭐⭐⭐⭐⭐</td><td>⭐⭐⭐⭐</td><td>⭐⭐⭐⭐</td><td>⭐⭐</td><td>⭐⭐</td></tr>
+        <tr><td><strong>技术报告</strong></td><td>详细</td><td class="cell-star">极详细 ⭐</td><td>详细</td><td>部分</td><td>详细</td></tr>
+        <tr><td><strong>社区生态</strong></td><td class="cell-star">⭐⭐⭐⭐⭐</td><td>⭐⭐⭐⭐</td><td class="cell-star">⭐⭐⭐⭐⭐</td><td>⭐⭐⭐</td><td>⭐⭐</td></tr>
+        <tr><td><strong>适合场景</strong></td><td>通用基座</td><td>推理/代码</td><td>通用基座</td><td>中文场景</td><td>超长上下文</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- =================== TRENDS =================== -->
+<section id="trends">
+  <h2><span class="icon">🔮</span> 行业趋势分析</h2>
+
+  <h3>🔴 四大行业拐点</h3>
+  <div class="company-grid" style="grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));">
+    <div class="company-card" style="border-left:4px solid var(--red);">
+      <div class="cc-body">
+        <h3 style="color:var(--red);margin-top:0;">拐点 1：开源爆发 (2023)</h3>
+        <p style="color:var(--text2);font-size:0.9rem;">LLaMA 泄露 → 社区爆发 → Llama 2 正式开源 → 证明开源可接近闭源 → 各家纷纷开源</p>
+      </div>
+    </div>
+    <div class="company-card" style="border-left:4px solid var(--orange);">
+      <div class="cc-body">
+        <h3 style="color:var(--orange);margin-top:0;">拐点 2：MoE 主流化 (2024)</h3>
+        <p style="color:var(--text2);font-size:0.9rem;">Mixtral → DeepSeek-V2 → V3 → 证明稀疏激活 >> Dense 性价比 → 2025 所有新旗舰都是 MoE</p>
+      </div>
+    </div>
+    <div class="company-card" style="border-left:4px solid var(--accent);">
+      <div class="cc-body">
+        <h3 style="color:var(--accent);margin-top:0;">拐点 3：RL 推理涌现 (2025.01)</h3>
+        <p style="color:var(--text2);font-size:0.9rem;">o1 (闭源) → R1 (全开源) → 证明纯 RL 可涌现推理能力 → QwQ/k1.5/GLM-Z1 全跟进</p>
+      </div>
+    </div>
+    <div class="company-card" style="border-left:4px solid var(--purple);">
+      <div class="cc-body">
+        <h3 style="color:var(--purple);margin-top:0;">拐点 4：Hybrid 架构验证 (2025)</h3>
+        <p style="color:var(--text2);font-size:0.9rem;">MiniMax-01 Hybrid → 4M context → 纯 Transformer 不是唯一答案 → Jamba/Zamba/RWKV-7 跟进</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:32px;">📐 已趋同 vs 仍在分化</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="arch-box">
+      <h4 style="color:var(--green);">✅ 已趋同（面试不用对比）</h4>
+      <table style="width:100%;">
+        <tr><td><strong>FFN</strong></td><td>SwiGLU</td></tr>
+        <tr><td><strong>归一化</strong></td><td>RMSNorm + Pre-Norm</td></tr>
+        <tr><td><strong>位置编码</strong></td><td>RoPE</td></tr>
+        <tr><td><strong>训练精度</strong></td><td>BF16 (→ FP8 趋势)</td></tr>
+        <tr><td><strong>预训练任务</strong></td><td>Causal LM</td></tr>
+        <tr><td><strong>对齐基线</strong></td><td>SFT → 偏好优化</td></tr>
+      </table>
+    </div>
+    <div class="arch-box">
+      <h4 style="color:var(--pink);">⚔️ 仍在分化（面试重点对比）</h4>
+      <table style="width:100%;">
+        <tr><td><strong>Attention</strong></td><td>MLA vs GQA vs Hybrid</td></tr>
+        <tr><td><strong>MoE</strong></td><td>细粒度(256) vs 粗粒度(8-32)</td></tr>
+        <tr><td><strong>长上下文</strong></td><td>架构 vs 工程 vs 数学</td></tr>
+        <tr><td><strong>后训练</strong></td><td>GRPO vs PPO vs DPO</td></tr>
+        <tr><td><strong>推理模式</strong></td><td>长 CoT vs 短 CoT (蒸馏)</td></tr>
+        <tr><td><strong>Dense vs MoE</strong></td><td>简单性 vs 性价比</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- =================== INTERVIEW =================== -->
+<section id="interview">
+  <h2><span class="icon">💬</span> 面试高频问答</h2>
+
+  <div class="qa-list">
+    <div class="qa-item">
+      <div class="question">Q1: 对比 DeepSeek-V3 和 Qwen2.5 的技术路线差异？</div>
+      <div class="answer">
+        <strong>架构层面</strong>：DeepSeek 走 MoE+MLA 路线，671B 总参数只激活 37B，靠 MLA 把 KV Cache 压缩 16×；Qwen 走 Dense+数据路线，72B 全量模型配 18T tokens。<br><br>
+        <strong>训练层面</strong>：DeepSeek 用 FP8 训练省计算+省通信，Auxiliary-Loss-Free 省调参；Qwen 用标准 BF16 但数据量是 DeepSeek 的 1.2 倍。DeepSeek 花 $5.5M，Qwen 估计 $10M+。<br><br>
+        <strong>哲学层面</strong>：DeepSeek 信奉「聪明的架构 > 暴力堆数据」，Qwen 信奉「数据 scaling 最稳健」。DeepSeek 更适合进一步 scaling（MoE 可继续增加 expert），Qwen 可能面临高质量数据枯竭。
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q2: 为什么 2025 年 RL 推理成为热点？SFT+DPO 不够吗？</div>
+      <div class="answer">
+        R1 证明推理能力不能靠模仿（SFT），需要 RL 的探索-利用机制来涌现。<strong>核心区别</strong>：SFT 只能学到训练数据中已有的推理模式，RL 可以发现新的推理路径。<br><br>
+        GRPO 去掉 critic 让工程更简单，规则 reward 让推理任务训练成本很低。关键发现：self-verification 和 reflection 从 RL 中涌现，没有在训练数据中显式教过。
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q3: 各家长上下文方案的 trade-off？</div>
+      <div class="answer">
+        <strong>Kimi</strong>: 工程路线（Offloading+分层存储）—— 灵活但增加推理延迟<br>
+        <strong>MiniMax</strong>: 架构路线（Linear Attention Hybrid）—— 根本解决但底层精度略降<br>
+        <strong>Qwen</strong>: 数学路线（YaRN 频率插值）—— 低成本但有外推上限<br>
+        <strong>Gemini/Llama4</strong>: 暴力路线（原生训练超长 context）—— 效果好但训练成本极高<br><br>
+        没有银弹，选什么取决于具体需求（延迟 vs 精度 vs 成本）。
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q4: MLA 为什么能做到 KV Cache 压缩 93.3%？</div>
+      <div class="answer">
+        传统 MHA 存储 h 个 head 的完整 K/V（尺寸 h × d_h × L），MLA 的创新是<strong>不存 K/V 本身，而是存一个低秩隐向量</strong> c（尺寸 d_c × L，d_c ≪ h × d_h）。推理时通过 learned projection 矩阵按需重构多头 K/V。<br><br>
+        核心挑战是 RoPE 和低秩压缩耦合——RoPE 是 position-dependent 的，直接压缩后无法合并矩阵。DeepSeek 用 <strong>Decoupled RoPE</strong> 解决：分离一个小通道 d_h^R 专门处理位置编码。
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q5: DeepSeek-R1 蒸馏模型是怎么做的？为什么蒸馏 > 小模型直接 RL？</div>
+      <div class="answer">
+        R1 用大模型（R1-671B）生成大量高质量推理数据（含完整 CoT），然后用这些数据对小模型（Qwen2.5-1.5B/7B/14B/32B, Llama-3.1-8B/70B）做 SFT。<br><br>
+        <strong>为什么蒸馏 > 直接 RL</strong>：小模型的 exploration 能力弱，RL 很难在小模型上涌现出复杂推理行为。蒸馏相当于把大模型的推理 pattern 直接灌给小模型，绕过了 exploration 瓶颈。结果：<strong>R1-Distill-32B > o1-mini</strong>。
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q6: 如何看待 Hybrid 架构（Linear + Softmax）的未来？</div>
+      <div class="answer">
+        MiniMax-01 证明了 Hybrid 可行且有显著优势（4M context）。<strong>趋势</strong>：未来可能 SSM + Attention + MoE 三位一体——SSM 层做高效全局压缩，Attention 层做精确推理，MoE 增加参数多样性。<br><br>
+        Jamba（AI21）、Zamba、RWKV-7 都在走这个方向。但目前 Hybrid 的生态（编译器、推理框架）还不如纯 Transformer 成熟，这是主要障碍。
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q7: 如果让你选开源模型做基座，怎么选？</div>
+      <div class="answer">
+        <strong>通用对话/中文</strong> → Qwen2.5-72B / Qwen3：生态最完整、Apache 2.0<br>
+        <strong>推理增强/数学代码</strong> → DeepSeek-R1-Distill-32B：推理能力 > o1-mini<br>
+        <strong>超长上下文</strong> → MiniMax-01：4M context 架构级解决<br>
+        <strong>端侧/资源受限</strong> → Qwen2.5-3B / Llama-3.2-3B / RWKV-7：恒定内存最适合端侧<br>
+        <strong>视觉多模态</strong> → Qwen2.5-VL：动态分辨率 + M-RoPE<br>
+        <strong>最新推理</strong> → QwQ-32B (开源) / Gemini 2.5 Pro (闭源最强)
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q8: RWKV-7 的广义 Delta Rule 为什么说"超越 Transformer 的表达力"？</div>
+      <div class="answer">
+        Transformer 的理论计算复杂度类是 <strong>TC⁰</strong>（常深度多项式大小阈值电路），而 RWKV-7 用 2 层即可追踪 <strong>NC¹</strong> 复杂度的 S₅ 对称群状态——NC¹ 严格包含 TC⁰。这意味着 RWKV-7 理论上能表达 Transformer 无法表达的计算。<br><br>
+        <strong>实际表现</strong>：RWKV-7-World 3B 在训练数据远少于 Qwen2.5/Llama3.2 的前提下达到了开源 SoTA 语言建模性能，证明了理论优势可以转化为实践。<br><br>
+        <strong>核心 trade-off</strong>：RWKV 的弱点在精确信息检索（如 Needle-in-a-Haystack），因为 RNN 的固定 state 会"遗忘"。这也是 RWKV-8 探索 Hybrid（混入少量 Attention 层）的原因。
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="question">Q9: 2025-2026 行业最值得关注的 5 个技术趋势？</div>
+      <div class="answer">
+        <strong>1. 推理模型成为标配</strong>：o1/R1 后所有厂商都推出了推理模型（QwQ/k1.5/GLM-Z1），长 CoT + RL 成为后训练必备。<br>
+        <strong>2. MoE 全面替代 Dense</strong>：Llama 4、Qwen3、DeepSeek-V3 都转向 MoE，Dense scaling 到 405B 后成本难以为继。<br>
+        <strong>3. Agent 框架爆发</strong>：MCP 协议统一、Claude Computer Use、OpenAI Assistants API，模型从"回答问题"转向"执行任务"。<br>
+        <strong>4. Hybrid 架构验证</strong>：MiniMax-01 证明 Linear+Softmax 可行，RWKV-7 证明纯 RNN 可行，未来可能 SSM+Attention+MoE 三位一体。<br>
+        <strong>5. 端侧模型爆发</strong>：Llama 3.2 1B/3B、Qwen2.5-1.5B、RWKV 等让大模型跑在手机/笔记本上成为现实。
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  <p>📝 LLM-REVIEW 面试准备资料 · 最后更新：2026-02-19</p>
+  <p style="margin-top:8px;">数据来源：各家官方技术报告、arXiv 论文、HuggingFace Model Cards</p>
+</footer>
+
+<script>
+  // Tab switching
+  function showTab(id) {
+    // Find parent section
+    const target = document.getElementById(id);
+    if (!target) return;
+    const section = target.closest('section');
+    if (!section) return;
+
+    // Deactivate all tabs in this section
+    section.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    section.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+    // Activate target
+    target.classList.add('active');
+
+    // Find and activate corresponding button
+    section.querySelectorAll('.tab-btn').forEach(btn => {
+      if (btn.getAttribute('onclick').includes(id)) {
+        btn.classList.add('active');
+      }
+    });
+  }
+
+  // Smooth scroll for nav
+  document.querySelectorAll('nav a').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Highlight active nav on scroll
+  const sections = document.querySelectorAll('section[id]');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(section => {
+      const sectionTop = section.offsetTop - 100;
+      if (scrollY >= sectionTop) {
+        current = section.getAttribute('id');
+      }
+    });
+    document.querySelectorAll('nav a').forEach(a => {
+      a.classList.remove('active');
+      if (a.getAttribute('href') === '#' + current) {
+        a.classList.add('active');
+      }
+    });
+  });
+</script>
+</body>
+</html>

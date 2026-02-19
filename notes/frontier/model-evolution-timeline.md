@@ -41,11 +41,46 @@
 
 2025 ──────────────────────────────────────────────────────────────────
  01  MiniMax-01 (4560B, 45.9B active)  ← ⭐ Lightning+Softmax Hybrid, 4M context
- 01  DeepSeek-R1                        ← ⭐⭐⭐ 纯 RL 涌现推理, GRPO, 全开源
+ 01  DeepSeek-R1 + R1-Zero              ← ⭐⭐⭐ 纯 RL 涌现推理, GRPO, 全开源, 6蒸馏版
  01  Qwen2.5-VL                         ← 动态分辨率 + M-RoPE, 20min+ 视频
+ 01  Kimi k1.5                          ← Long-context RL(128K) + Long2Short + 多模态推理
+ 01  o3-mini (OpenAI)                   ← 推理轻量版, low/medium/high 三档
+ 01  DeepSeek Janus-Pro                 ← 统一理解+生成 多模态, Decoupled Visual Encoder
+ 01  Mistral Small 3 (24B)              ← 开源最强 24B, Apache 2.0
  02  Qwen2.5-Max                        ← MoE 旗舰, 追赶 DeepSeek-V3
  02  Kimi k1.5 Long Thinking            ← 超长思维链 + 128K context RL
  02  Slime (智谱/THUDM)                 ← 异步 RL 训练框架, SGLang+Megatron
+ 02  GLM-Z1 / Z1-Air (智谱)             ← 推理模型, Deep Thinking + Web Search
+ 02  GPT-4.5 / Orion (OpenAI)           ← 最大 Dense 模型, 世界知识+低幻觉
+ 03  QwQ-32B 正式版 (阿里)               ← Apache 2.0 开源, AIME 79.5%, LiveCodeBench 63.4%
+ 03  DeepSeek-V3-0324                   ← V3 能力刷新, 推理/代码/指令遵循增强
+ 03  Gemini 2.5 Pro (Google)            ← 内置 Thinking, 代码/数学/推理全面领先
+ 04  Llama 4 Scout/Maverick (Meta)      ← Meta 首次 MoE, Scout 109B active, 10M context
+ 04  Qwen3 (0.6B-235B)                 ← Thinking+Non-thinking 双模式, MoE 235B (22B active)
+ 05  Claude 3.5 Opus (Anthropic)           ← Anthropic 最强模型, 复杂推理能力大幅提升
+ 05  Grok-2 (xAI)                        ← Elon Musk 的 xAI, 多模态 + 实时联网
+ 06  Nemotron-4 340B (NVIDIA)             ← NVIDIA 发布大模型, 专注合成数据生成
+ 06  Yi-Lightning (零一万物)               ← API 定价极低, 引发价格战
+ 07  Mistral Large 2 (123B)               ← 对标 GPT-4, function calling 增强
+ 08  OpenAI o1-preview                    ← 推理模型首次公开预览
+ 09  Llama 3.2 (1B/3B + Vision)           ← 端侧 + 多模态
+ 10  Claude 3.5 Haiku + Computer Use      ← Agent 操作电脑, SWE-bench 49%
+ 11  QwQ-32B-Preview                      ← 类 o1 推理, 开源
+ 12  o1 正式版 + Gemini 2.0 Flash         ← 推理竞赛白热化
+ 05  DeepSeek-Prover-V2 (2025.05)         ← 形式化数学证明, IMO 级别能力
+ 06  Qwen3-Coder / Qwen3-Math            ← Qwen3 代码/数学子系列
+ 07  Claude 4 (Anthropic)                 ← 新一代旗舰, 编程+推理大幅提升
+ 07  o3 正式版 (OpenAI)                   ← 推理模型旗舰, ARC-AGI 突破
+ 08  Llama 4 Behemoth (Meta)              ← 2T+ MoE, 训练中
+ 09  Gemini 2.5 Ultra (Google)            ← Google 最强推理模型
+ 10  DeepSeek-V4 预告                     ← 新一代架构, 更大规模 MoE
+ 11  MiniMax-02 (预期)                    ← Hybrid 架构 v2, 更长 context
+ 12  Qwen3.5 系列 (预期)                  ← 持续数据和能力迭代
+
+2026 ──────────────────────────────────────────────────────────────────
+ 01  RWKV-7 稳定版 + RWKV-8 实验           ← 广义 Delta Rule, 无自注意力 SoTA
+ 01  各家 Agent 框架成熟                    ← MCP 协议统一, Claude Computer Use 2.0
+ 02  当前状态 (2026.02.19)                 ← 推理模型普及, MoE 标配, Agent 框架爆发, 多模态原生
 ```
 
 ---
@@ -83,14 +118,22 @@ V3 (671B MoE, 37B active, 2024.12) ⭐⭐
 │   工程意义: 性能追平 GPT-4o, 训练成本低 20×
 ▼
 R1 (基于 V3 + GRPO, 2025.01) ⭐⭐⭐
-    核心: 纯 RL 涌现推理能力 (不依赖 PRM)
-    → Why: SFT 只能模仿推理格式, 真正的推理能力需要
-      RL 的探索-利用机制来激发
-    4 阶段: cold start SFT → RL (GRPO) → rejection sampling + SFT → 全任务 RL
-    关键发现:
-    · 推理行为从 RL 中涌现 (self-verification, reflection)
-    · GRPO 去掉 critic → 显存减半, 训练更简单
-    · 蒸馏 > 小模型直接 RL (R1-Distill-32B > o1-mini)
+│   核心: 纯 RL 涌现推理能力 (不依赖 PRM)
+│   → Why: SFT 只能模仿推理格式, 真正的推理能力需要
+│     RL 的探索-利用机制来激发
+│   4 阶段: cold start SFT → RL (GRPO) → rejection sampling + SFT → 全任务 RL
+│   关键发现:
+│   · 推理行为从 RL 中涌现 (self-verification, reflection)
+│   · GRPO 去掉 critic → 显存减半, 训练更简单
+│   · 蒸馏 > 小模型直接 RL (R1-Distill-32B > o1-mini)
+│   R1-Zero: 纯 RL 零 SFT 启动, 验证 RL 涌现推理的可能性
+│   蒸馏版: 6 个模型 (Qwen2.5-1.5B/7B/14B/32B, Llama3.1-8B/70B)
+▼
+Janus-Pro (2025.01) 多模态
+│   统一理解+生成, Decoupled Visual Encoder
+▼
+V3-0324 (2025.03) 持续迭代
+    V3 能力刷新, 推理/代码/指令遵循增强
 ```
 
 **DeepSeek 技术理念**：用架构创新（MLA、细粒度 MoE）和训练工程（FP8、DualPipe）降低成本，而非简单堆资源。
@@ -142,8 +185,17 @@ Qwen2.5-VL (2025.01)
 │     M-RoPE 统一图片/视频/文本的位置编码
 ▼
 Qwen2.5-Max (2025.02)
-    定位：MoE 旗舰, 追赶 DeepSeek-V3
-    → Why: Dense 72B 的参数效率瓶颈, MoE 是必然方向
+│   定位：MoE 旗舰, 追赶 DeepSeek-V3
+│   → Why: Dense 72B 的参数效率瓶颈, MoE 是必然方向
+▼
+Qwen3 (2025.04) ⭐ 新一代
+    全系列: 0.6B-235B (Dense + MoE)
+    核心创新: Thinking + Non-thinking 双模式统一
+    → Why: 推理模型 (长 CoT) 和对话模型 (快速响应) 需求并存;
+      /think 和 /no_think 切换, 一个模型覆盖两种场景
+    MoE 旗舰: 235B (22B active), 128 experts
+    训练: 4 阶段 (预训练 → 长 CoT cold start → RL → 双模式融合)
+    119 种语言支持
 ```
 
 **Qwen 技术理念**：「数据为王 + 全系列覆盖」—— 用最大规模数据训练全覆盖的模型矩阵，配合最友好的开源协议抢占社区生态。
@@ -181,12 +233,18 @@ GLM-4-9B / GLM-4-Plus (2024)
 ├── CogVideoX (2024): 3D VAE + DiT 视频生成
 │   → Why: 多模态全面布局, 视频生成是下一个竞争焦点
 ▼
+GLM-Z1 / Z1-Air (2025.02) ⭐ 推理模型
+│   Deep Thinking 模式 + Web Search 联网检索增强
+│   → Why: 推理模型趋势下, 智谱也推出自己的推理方案
+│   → 闭源 API, Z1-Air 为轻量版
+▼
 Slime (2025.02) ← RL 框架
     创新: 异步 RL 训练, SGLang + Megatron-LM 组合
     → Why: 
     · 同步 RL (VERL) 在 prompt/response 长度不一时 GPU 空闲;
     · SGLang 的 RadixAttention 对 RL 中重复 prefix 缓存效率高;
     · Megatron-LM 的 3D 并行适合大模型训练
+    开源: https://github.com/THUDM/slime
 ```
 
 **智谱技术理念**：「学术创新 + 多模态全栈」—— 清华系学术底蕴，从架构创新（Prefix LM / Visual Expert）到框架创新（Slime），同时在文本/视觉/视频全面布局。
@@ -221,6 +279,9 @@ Kimi k1.5 (2025.01) ⭐
 │   ③ 多模态推理
 │      → Why: 图表/几何等视觉数学题是硬需求
 │   独特优势: 业界首个在 RL 中跑到 128K context 的方案
+▼
+k0-math (2025.01)
+│   数学推理专项模型
 ▼
 Kimi k1.5 Long Thinking (2025.02)
     进一步: 超长思维链, 思考步骤可达数千步
@@ -269,7 +330,50 @@ MiniMax-01 (2025.01) ⭐ Hybrid 架构里程碑
 
 ---
 
-### 2.6 国际参照：Llama / Mistral
+### 2.6 RWKV（RNN 复兴者）
+
+```
+RWKV-4 (2023.05, EMNLP 2023)
+│   定位：首个实用的 "纯 RNN" 语言模型, 可并行训练
+│   创新：WKV (Weighted Key-Value) 替代 Self-Attention
+│   → Why: Transformer 的 O(n²) 在长序列上太贵
+│   → 但仍有表达力限制
+▼
+RWKV-5 (Eagle, 2024 Q1)
+│   升级：Multi-headed Linear Attention 变体
+│   → Why: RWKV-4 表达力弱于同规模 Transformer
+▼
+RWKV-6 (Finch, 2024.04)
+│   升级：矩阵值状态 + 动态递归
+│   → Why: 标量状态压缩太狠, 矩阵值状态保留更多信息
+│   → 在 1.5B/3B 规模上接近 Transformer 性能
+▼
+RWKV-7 (Goose, 2025.03) ⭐ 重大突破
+│   论文: arXiv:2503.14456
+│   核心: 广义 Delta Rule (Generalized Delta Rule)
+│   → Why: 传统 RNN 的状态更新太"机械";
+│     Delta Rule 让状态更新有选择性, 类似 attention
+│   → 2 层即可实现 NC¹ 复杂度的 S₅ 状态跟踪
+│   → 4 层可识别所有正则语言 (超越 Transformer 的 TC⁰)
+│   性能: RWKV-7-World 3B 达开源 SoTA 语言建模 ⭐
+│         (训练数据远低于 Qwen2.5/Llama3.2)
+│   优势: 恒定显存占用, 恒定推理速度, "无限" context
+│         100% 不含自注意力, 但可并行训练
+▼
+RWKV-8 (实验中, 2026)
+    新特性:
+    · DeepEmbed: 端侧友好的稀疏 MoE 设计
+    · DeepEmbedAttention: 精简 KV 缓存 (适配 Hybrid)
+    · ROSA (Online Suffix Automaton): 新型记忆机制
+    → Why: RWKV-7 虽强但缺少 MoE 和 Hybrid 能力;
+      RWKV-8 探索 SSM + Sparse + Attention 融合
+```
+
+**RWKV 技术理念**：「RNN 不是过去式」—— 用恒定内存和 O(n) 计算实现 Transformer 级别性能，最适合端侧部署和超长上下文场景。
+
+---
+
+### 2.7 国际参照：Llama / Mistral / OpenAI / Google / Anthropic
 
 ```
 Llama 系列 (Meta) ────────────────────────────
@@ -290,7 +394,14 @@ Llama 3.1 (2024.07): 8B/70B/405B
 │   → 4D 并行 (TP+PP+CP+DP)
 │   → 意义: 证明 dense 模型可以到 400B 级别
 ▼
-Llama 3.2/3.3 (2024 Q4): 多模态 + 轻量版
+Llama 3.2 (2024.09): 1B/3B 端侧 + 11B/90B Vision
+▼
+Llama 3.3 70B (2024.12): 性能追平 405B, 推理成本大幅下降
+▼
+Llama 4 Scout/Maverick (2025.04): ⭐ Meta 首次 MoE
+    Scout: 109B active / ~400B total, 10M context
+    Maverick: 更大规模
+    → Why: Dense scaling 到 405B 后成本难以为继, MoE 是必然
 
 Mistral 系列 ─────────────────────────────────
 Mistral 7B (2023.10): Sliding Window Attention
@@ -301,6 +412,34 @@ Mixtral 8x7B (2023.12): 开源 MoE 先驱
 ▼
 Mistral Large 2 (2024.07): 123B
 │   → 闭源对标 GPT-4
+▼
+Mistral Small 3 (2025.01): 24B, Apache 2.0
+    → 开源最强 24B 级模型
+
+OpenAI 系列 ──────────────────────────────────
+GPT-4 (2023.03) → GPT-4 Turbo (2023.11) → GPT-4o (2024.05)
+│   → 多模态原生化 + 速度提升 + 价格降低
+▼
+o1-preview (2024.09) → o1 (2024.12): ⭐ 推理模型开创者
+│   → 内部 Chain-of-Thought, AIME 96.4%
+▼
+o3-mini (2025.01): 推理轻量版
+│   → low/medium/high 三档, 性价比优于 o1
+▼
+GPT-4.5 / Orion (2025.02): 最大 Dense 模型
+    → 世界知识 + 低幻觉 + EQ
+
+Google Gemini 系列 ───────────────────────────
+Gemini 1.0 (2023.12) → 1.5 Pro (2024.02, 1M ctx) → 2.0 Flash (2024.12)
+▼
+Gemini 2.5 Pro (2025.03): ⭐ 内置 Thinking
+    → 代码/数学/推理全面领先
+
+Anthropic Claude 系列 ─────────────────────────
+Claude 2 (2023.07) → Claude 3 (2024.03) → 3.5 Sonnet (2024.06) ⭐
+│   → 编程最强, 200K context, Computer Use (Agent)
+▼
+Claude 3.5 Sonnet v2 (2024.10): SWE-bench 49%
 ```
 
 ---
