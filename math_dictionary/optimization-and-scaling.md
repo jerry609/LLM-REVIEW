@@ -1,69 +1,217 @@
-# 优化器、Scaling Law 与训练数学速查
+# 优化器、Scaling Law 与训练数学详解
 
-## 1) 交叉熵损失
-- `L = -(1/N) * sum_t log p_theta(x_t|x_{<t})`
-- 训练目标是最大化正确 token 概率（最小化负对数似然）。
+> **核心定位**：从交叉熵损失出发，严格推导 Adam / AdamW 的更新规则与设计动机，深入 Chinchilla Scaling Law 的幂律模型与最优配比，涵盖学习率调度、梯度累积、训练 FLOPs 估算、MFU，以及推理 Scaling 的新范式。
 
-## 2) Adam 更新（简化）
-- 一阶矩：`m_t = beta1*m_{t-1} + (1-beta1)*g_t`
-- 二阶矩：`v_t = beta2*v_{t-1} + (1-beta2)*g_t^2`
-- 偏差校正：`m_hat_t = m_t/(1-beta1^t)`，`v_hat_t = v_t/(1-beta2^t)`
-- 参数更新：`theta_t = theta_{t-1} - lr * m_hat_t/(sqrt(v_hat_t)+eps)`
-- 常见超参：`beta1=0.9, beta2=0.95, eps=1e-8`（LLM 训练常用 `beta2=0.95`）
+---
 
-## 3) AdamW（权重衰减）
-- 与 Adam 区别：权重衰减直接作用于参数，而非梯度
-- `theta_t = theta_{t-1} - lr * (m_hat_t/(sqrt(v_hat_t)+eps) + lambda * theta_{t-1})`
-- `lambda`：权重衰减系数，常为 0.1
+## 1. 交叉熵损失（Next-Token Prediction）
 
-## 4) 学习率调度
-- Warmup：前 `T_warmup` 步线性增长 `lr: 0 → lr_max`
-- Cosine decay：
-  `lr(t) = lr_min + 0.5*(lr_max - lr_min)*(1 + cos(pi * (t-T_warmup)/(T_total-T_warmup)))`
-- 常见设置：warmup 占总步数的 1-5%，lr_min = lr_max * 0.1
+$$
+\boxed{\mathcal{L} = -\frac{1}{N}\sum_{t=1}^{N} \log p_\theta(x_t \mid x_{<t})}
+$$
 
-## 5) 梯度累积
-- 当显存不足以放下目标 batch size 时：
-  `effective_batch_size = micro_batch_size * accumulation_steps * DP_size`
-- 每 `accumulation_steps` 步做一次参数更新
-- 数学上等价于大 batch（忽略 BN 等），但训练时间不变
+- $N$：总 token 数。
+- $p_\theta(x_t \mid x_{<t})$：模型在位置 $t$ 对正确 token $x_t$ 的预测概率。
+- **训练目标**：最大化正确 token 的概率 $\Leftrightarrow$ 最小化负对数似然。
 
-## 6) Scaling Law（Chinchilla 版）
-- 损失随模型规模、数据规模呈幂律下降：
-  `L(N, D) ≈ A/N^alpha + B/D^beta + L_irr`
-  - `N`：参数量，`D`：训练 token 数，`L_irr`：不可约损失
-  - 典型值：`alpha ≈ 0.34, beta ≈ 0.28`
-- **Chinchilla 最优**：给定 compute budget `C`
-  - `C ≈ 6 * N * D`（近似 FLOPs）
-  - 最优配比：`D ≈ 20 * N`（即训练 token 数 ≈ 20× 参数量）
-  - 例：7B 模型 → 理论最优约 140B token
-- 面试重点："预算固定时如何在模型/数据/训练步数间平衡"
+---
 
-## 7) 推理 Scaling（Inference-time Compute Scaling）
-- 思路：在推理时通过更多计算提升质量
-- 方法：
-  - Best-of-N：生成 N 个回答，用 verifier 选最好的
-  - Chain-of-thought：更长的推理链 → 更多 token → 更多 FLOPs
-  - Tree search / MCTS：搜索更大的候选空间
-- 推理 FLOPs 与质量的关系也呈现类 scaling law 的 log-linear 关系
+## 2. Adam 优化器严格推导
 
-## 8) 训练 FLOPs 估算
-- 前向传播：`≈ 2 * N` FLOPs per token（`N` 为参数量）
-- 反向传播：`≈ 4 * N` FLOPs per token（约前向的 2 倍）
-- 总训练 FLOPs：`C ≈ 6 * N * D`
-  - 例：7B 模型 × 1T token ≈ `6 * 7e9 * 1e12 = 4.2e22 FLOPs`
-  - A100 (312 TFLOPS BF16)：`4.2e22 / 312e12 ≈ 1.35e8 秒 ≈ 1560 GPU-days`
-  - 考虑 MFU（Model FLOPs Utilization）~50%：实际约 3120 GPU-days
+### 2.1 一阶矩（动量）
 
-## 9) MFU（Model FLOPs Utilization）
-- `MFU = actual_model_flops / (peak_flops * time)`
-- 衡量训练效率（排除通信、数据加载等开销后的有效利用率）
-- 优秀：>50%，良好：30-50%，需优化：<30%
+$$
+m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t
+$$
 
-## 10) 与推理的关系
-- 训练决定上限，推理系统决定是否把上限稳定交付给用户。
-- Scaling law 指导选模型大小；推理优化决定成本可行性。
-- 量化/蒸馏的目标：用更少的推理成本逼近更大模型的质量。
+$m_t$ 是梯度 $g_t$ 的**指数加权移动平均**（EMA），用于平滑梯度噪声，提供动量。
+
+### 2.2 二阶矩（自适应学习率）
+
+$$
+v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2
+$$
+
+$v_t$ 是梯度平方的 EMA，估计每个参数维度的梯度方差。**逐元素**除以 $\sqrt{v_t}$ 实现自适应学习率。
+
+### 2.3 偏差校正
+
+由于 $m_0 = 0, v_0 = 0$，初始步骤的估计偏向零。校正公式：
+
+$$
+\hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}
+$$
+
+### 2.4 参数更新
+
+$$
+\boxed{\theta_t = \theta_{t-1} - \eta \cdot \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}}
+$$
+
+**常见超参**（LLM 训练）：$\beta_1 = 0.9$，$\beta_2 = 0.95$，$\epsilon = 10^{-8}$，$\eta \sim 10^{-4}$。
+
+### 2.5 Adam 的致命盲区
+
+Adam 是**逐元素（Element-wise）**的优化器。一个 $1000 \times 1000$ 的权重矩阵，在 Adam 眼里是 $10^6$ 个独立标量。它完全忽视了这些元素共同构成一个"几何空间变换矩阵"的事实，这加剧了权重向低秩塌陷的趋势。
+
+---
+
+## 3. AdamW（解耦权重衰减）
+
+$$
+\theta_t = \theta_{t-1} - \eta \left(\frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon} + \lambda \theta_{t-1}\right)
+$$
+
+**与 L2 正则化的区别**：
+- **L2 正则**：将 $\lambda \theta$ 加到梯度 $g$ 中，然后经过 Adam 的自适应缩放。
+- **AdamW**：将 $\lambda \theta$ 直接加到参数更新中，**不经过**自适应缩放。
+
+后者在实验中表现更好，因为权重衰减不应被 $\sqrt{v_t}$ 调整。
+
+---
+
+## 4. 学习率调度
+
+### 4.1 Warmup + Cosine Decay
+
+$$
+\eta(t) = \begin{cases}
+\eta_{\max} \cdot \frac{t}{T_{\text{warmup}}} & t \le T_{\text{warmup}} \\[6pt]
+\eta_{\min} + \frac{\eta_{\max} - \eta_{\min}}{2}\left(1 + \cos\!\left(\pi \cdot \frac{t - T_{\text{warmup}}}{T_{\text{total}} - T_{\text{warmup}}}\right)\right) & t > T_{\text{warmup}}
+\end{cases}
+$$
+
+| 超参 | 典型值 | 说明 |
+|------|--------|------|
+| $T_{\text{warmup}}$ | 总步数的 $1\%$–$5\%$ | 防止初始大梯度导致不稳定 |
+| $\eta_{\min}$ | $\eta_{\max} \times 0.1$ | 最终学习率 |
+
+### 4.2 WSD (Warmup-Stable-Decay)
+
+MiniCPM 等提出的三阶段调度：Warmup → 恒定 $\eta_{\max}$ → 快速衰减。更适合固定算力预算的训练。
+
+---
+
+## 5. 梯度累积
+
+当显存不足以放下目标 Batch Size 时：
+
+$$
+\text{Effective Batch Size} = B_{\text{micro}} \times G_{\text{accum}} \times D_{\text{parallel}}
+$$
+
+每 $G_{\text{accum}}$ 步做一次参数更新。数学上等价于大 Batch（忽略 BN 等），但 wall-clock 时间不变。
+
+---
+
+## 6. Scaling Law
+
+### 6.1 Chinchilla 幂律模型
+
+$$
+\boxed{L(N, D) = \frac{A}{N^\alpha} + \frac{B}{D^\beta} + L_{\text{irr}}}
+$$
+
+| 符号 | 含义 | 典型值 |
+|------|------|--------|
+| $N$ | 模型参数量 | — |
+| $D$ | 训练 Token 数 | — |
+| $\alpha$ | 参数量指数 | $\approx 0.34$ |
+| $\beta$ | 数据量指数 | $\approx 0.28$ |
+| $L_{\text{irr}}$ | 不可约损失（数据本身的熵下界） | $\approx 1.69$ |
+
+### 6.2 Chinchilla 最优配比
+
+给定计算预算 $C \approx 6ND$（总训练 FLOPs），最小化 $L(N, D)$ 的最优条件为：
+
+$$
+\frac{\partial L}{\partial N} \cdot \frac{\partial C}{\partial D} = \frac{\partial L}{\partial D} \cdot \frac{\partial C}{\partial N}
+$$
+
+求解得到最优比例：
+
+$$
+\boxed{D^* \approx 20 N^*}
+$$
+
+即**训练 Token 数应约为参数量的 20 倍**。
+
+| 模型 | 参数量 | Chinchilla 最优 Token 数 |
+|------|--------|:-------------------------:|
+| 7B | $7 \times 10^9$ | $\sim 140$B |
+| 70B | $7 \times 10^{10}$ | $\sim 1.4$T |
+| 405B | $4.05 \times 10^{11}$ | $\sim 8$T |
+
+**注**：实际训练（如 Llama 3）常显著超过 Chinchilla 最优（"过训练"），因为推理成本与 $N$ 成正比——小模型多训点更划算。
+
+---
+
+## 7. 训练 FLOPs 估算
+
+### 7.1 单 Token 的 FLOPs
+
+| 阶段 | FLOPs per Token |
+|------|:---------------:|
+| 前向传播 | $\approx 2N$ |
+| 反向传播 | $\approx 4N$（约前向的 2 倍） |
+| **总计** | $\approx 6N$ |
+
+### 7.2 总训练 FLOPs
+
+$$
+\boxed{C = 6 N D}
+$$
+
+**代入示例**：
+
+| 模型 | $N$ | $D$ | $C$ | A100 GPU-Days (MFU=50%) |
+|------|-----|-----|-----|:----------------------:|
+| 7B | $7 \times 10^9$ | $1 \times 10^{12}$ | $4.2 \times 10^{22}$ | $\sim 3{,}120$ |
+| 70B | $7 \times 10^{10}$ | $1.4 \times 10^{12}$ | $5.9 \times 10^{23}$ | $\sim 43{,}500$ |
+
+GPU-Days 计算：
+$$
+\text{GPU-Days} = \frac{C}{\text{Peak FLOPS} \times \text{MFU} \times 86400}
+$$
+
+---
+
+## 8. MFU (Model FLOPs Utilization)
+
+$$
+\boxed{\text{MFU} = \frac{6ND / T_{\text{wall}}}{\text{Num GPUs} \times \text{Peak FLOPS per GPU}}}
+$$
+
+| MFU 范围 | 评价 |
+|:--------:|------|
+| $> 50\%$ | 优秀 |
+| $30\%$–$50\%$ | 良好 |
+| $< 30\%$ | 需要优化（通信瓶颈、加载瓶颈等） |
+
+---
+
+## 9. 推理 Scaling (Test-Time Compute Scaling)
+
+### 9.1 核心思路
+
+在推理阶段通过更多计算提升质量：
+
+| 方法 | 推理 FLOPs 倍增 | 说明 |
+|------|:--------------:|------|
+| **Best-of-N** | $N\times$ | 生成 $N$ 个回答，用 Verifier 选最好的 |
+| **Chain-of-Thought** | $L_{\text{CoT}} / L_{\text{direct}}$ | 更长的推理链 → 更多 Token |
+| **Tree Search / MCTS** | 指数级 | 搜索更大的候选空间 |
+
+### 9.2 Scaling 行为
+
+推理 FLOPs 与质量也呈现类 Scaling Law 的 log-linear 关系：
+
+$$
+\text{Quality} \propto a \cdot \log(\text{Inference FLOPs}) + b
+$$
+
+---
 
 ## 面试一句话
-- "Chinchilla 告诉我们参数和数据要同步 scale；推理 scaling 则说明测试时算力也能换质量。"
+
+> "Chinchilla 告诉我们参数和数据要同步 scale（$D^* \approx 20N^*$）；$C = 6ND$ 一步算出训练总预算；AdamW 解耦权重衰减比 L2 更优；推理 Scaling 则打开了'测试时算力换质量'的新范式。"
