@@ -106,6 +106,14 @@
 
 > 20+ 子主题的系统性深度笔记，每篇均包含原理推导、代码示例、面试问答。
 
+### 基础速通 [`notes/basics/`](notes/basics/)
+
+| 文件 | 内容 |
+|------|------|
+| [`python-essentials.md`](notes/basics/python-essentials.md) | Python 核心语法（函数式编程、OOP、装饰器、NumPy/Pandas、asyncio） |
+| [`neural-network-fundamentals.md`](notes/basics/neural-network-fundamentals.md) | 神经网络核心（前向/反向传播、损失函数、梯度下降、激活函数、完整训练循环） |
+| [`pytorch-quickstart.md`](notes/basics/pytorch-quickstart.md) | PyTorch 速通（Tensor 操作、autograd、nn.Module、DataLoader、混合精度、HF 生态） |
+
 ### 注意力机制 [`notes/attention/`](notes/attention/)
 
 | 文件 | 内容 |
@@ -163,11 +171,16 @@
 
 | 文件 | 内容 |
 |------|------|
-| [`alignment-pipeline.md`](notes/training/alignment-pipeline.md) | 对齐训练全流程（SFT → RLHF → DPO） |
+| [`pretraining-data.md`](notes/training/pretraining-data.md) | 预训练数据工程（CLM/MLM/MTP 任务、数据来源、清洗、配比） |
+| [`pretraining-pipeline.md`](notes/training/pretraining-pipeline.md) | **预训练实战全流程**（数据打包→Tokenizer→模型初始化→训练循环→MFU→断点续训→评估导出） |
+| [`scaling-law.md`](notes/training/scaling-law.md) | Scaling Law 与训练策略（Kaplan / Chinchilla / 推理 Scaling） |
+| [`peft-methods-comparison.md`](notes/training/peft-methods-comparison.md) | **PEFT 方法全景对比**（LoRA/QLoRA/DoRA/Adapter/IA³/Prefix-Tuning/P-Tuning v2 + 选型指南） |
+| [`instruction-data-construction.md`](notes/training/instruction-data-construction.md) | **指令数据构建**（Self-Instruct/Evol-Instruct/领域构建/质量过滤/配比策略） |
+| [`finetuning-frameworks.md`](notes/training/finetuning-frameworks.md) | **微调框架实战**（LlamaFactory YAML/WebUI + Unsloth 加速 + trl SFT/DPO/GRPO + 资源估算） |
 | [`lora-rlhf.md`](notes/training/lora-rlhf.md) | LoRA + RLHF 联合训练 |
-| [`post-training-advanced.md`](notes/training/post-training-advanced.md) | 后训练高级技术 |
-| [`scaling-law.md`](notes/training/scaling-law.md) | Scaling Law 与训练策略 |
-| [`pretraining-data.md`](notes/training/pretraining-data.md) | 预训练数据工程 |
+| [`alignment-pipeline.md`](notes/training/alignment-pipeline.md) | 对齐训练全流程（SFT → RLHF → DPO） |
+| [`post-training-advanced.md`](notes/training/post-training-advanced.md) | 后训练高级技术（RLAIF/SimPO/KTO/ORPO/IPO/SPIN） |
+| [`reward-model-and-rlhf-practice.md`](notes/training/reward-model-and-rlhf-practice.md) | **RM 训练 + RLHF 实战**（奖励模型架构/训练/PPO 代码/DPO checklist/GRPO 实战/调试指南） |
 
 ### 推理框架 [`notes/frameworks/`](notes/frameworks/)
 
@@ -201,7 +214,7 @@
 | 目录 | 内容 |
 |------|------|
 | [`notes/cuda/`](notes/cuda/) | CUDA 编程基础与显存层次 |
-| [`notes/multimodal/`](notes/multimodal/) | 多模态模型推理（VLM Serving） |
+| [`notes/multimodal/`](notes/multimodal/) | 多模态（[VLM Serving](notes/multimodal/vlm-serving.md) · [ViT/CLIP/BLIP/LLaVA 架构](notes/multimodal/vision-language-models.md) · [多模态训练全流程](notes/multimodal/multimodal-training.md)） |
 | [`notes/evaluation/`](notes/evaluation/) | 评测基准与幻觉检测 |
 | [`notes/system-design/`](notes/system-design/) | 系统设计方法论与模式 |
 | [`notes/coding/`](notes/coding/) | LLM 相关算法编程 |
@@ -377,11 +390,13 @@ LLM-REVIEW/
 │   ├── kv-eviction/             ←   KV 驱逐策略
 │   ├── inference/               ←   推理与解码策略
 │   ├── distributed/             ←   分布式推理（TP/PP/EP）
-│   ├── training/                ←   训练与对齐（LoRA、RLHF、Scaling Law）
+│   ├── basics/                  ←   基础速通（Python、神经网络、PyTorch）
+│   ├── training/                ←   训练全栈（预训练Pipeline、PEFT对比、指令数据、微调框架、RLHF实战）
 │   ├── frameworks/              ←   推理框架（vLLM、TRT-LLM、SGLang）
 │   ├── serving/                 ←   服务与运维
 │   ├── frontier/                ←   前沿模型追踪
-│   └── ...                      ←   CUDA、多模态、评测等
+│   ├── multimodal/              ←   多模态（ViT/CLIP/LLaVA架构、训练流程、VLM推理）
+│   └── ...                      ←   CUDA、评测、系统设计等
 ├── notebooks/                   ← Jupyter 实验 + HTML 学术文档
 ├── src/                         ← PyTorch 核心实现
 ├── mock_interview/              ← 面试题库（主题/公司/行为）
