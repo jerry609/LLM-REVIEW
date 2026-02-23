@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五大注意力机制全流程统一对比表</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '$', right: '$', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --fg: #1a1a2e; --accent: #2563eb; --border: #d1d5db;
+    --code-bg: #f8f9fa; --section-bg: #fafbfc; --heading: #0f172a; --muted: #64748b;
+    --red: #dc2626; --green: #16a34a; --orange: #ea580c; --purple: #7c3aed; --teal: #0d9488;
+    --yellow-bg: #fefce8; --blue-bg: #eff6ff; --green-bg: #f0fdf4; --red-bg: #fef2f2;
+    --purple-bg: #faf5ff; --teal-bg: #f0fdfa;
+    --font-serif: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+
+    --c-mha: #2563eb; --c-gqa: #7c3aed; --c-mla: #0d9488; --c-dsa: #ea580c; --c-lin: #16a34a;
+    --bg-mha: #eff6ff; --bg-gqa: #faf5ff; --bg-mla: #f0fdfa; --bg-dsa: #fff7ed; --bg-lin: #f0fdf4;
+  }
+  body {
+    font-family: var(--font-serif); color: var(--fg); background: var(--bg);
+    line-height: 1.8; font-size: 14.5px; max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px;
+  }
+  .paper-title {
+    font-size: 26px; font-weight: 700; color: var(--heading); text-align: center;
+    margin-bottom: 6px; letter-spacing: -0.2px; line-height: 1.35;
+  }
+  .paper-subtitle {
+    text-align: center; color: var(--heading); font-size: 15px; font-style: italic;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: 18px; font-weight: 700; color: var(--heading); margin: 36px 0 12px;
+    padding-bottom: 4px; border-bottom: 2px solid var(--accent);
+    display: flex; align-items: center; gap: 8px;
+  }
+  h2 .sec-num {
+    background: var(--accent); color: #fff; font-size: 11px; font-family: var(--font-mono);
+    padding: 2px 8px; border-radius: 3px; flex-shrink: 0;
+  }
+  h3 { font-size: 15px; font-weight: 600; color: var(--heading); margin: 20px 0 6px; }
+
+  p { margin: 6px 0; text-align: justify; }
+  strong { font-weight: 700; }
+
+  .abstract {
+    background: var(--section-bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 16px 20px; margin: 0 0 24px; font-size: 13.5px; line-height: 1.7;
+  }
+  .abstract-title { font-weight: 700; font-size: 13px; color: var(--accent); margin-bottom: 4px; font-family: var(--font-sans); }
+
+  .toc {
+    background: var(--section-bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 14px 20px; margin: 0 0 24px; font-size: 13px; columns: 2; column-gap: 24px;
+  }
+  .toc-title { font-weight: 700; font-size: 13px; color: var(--heading); margin-bottom: 6px; font-family: var(--font-sans); column-span: all; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ul { margin: 2px 0 2px 16px; list-style: none; }
+  .toc ul li { margin: 2px 0; }
+  .toc ul li::before { content: "·"; color: var(--muted); margin-right: 5px; }
+
+  /* ─── 5-column comparison tables ─── */
+  .ct { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12.5px; font-family: var(--font-sans); table-layout: fixed; }
+  .ct th, .ct td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; vertical-align: top; }
+  .ct thead th { font-size: 12px; font-weight: 700; text-align: center; color: #fff; }
+  .ct .th-step { background: #374151; color: #fff; width: 10%; font-weight: 600; text-align: left; }
+  .ct .th-mha { background: var(--c-mha); width: 18%; }
+  .ct .th-gqa { background: var(--c-gqa); width: 18%; }
+  .ct .th-mla { background: var(--c-mla); width: 18%; }
+  .ct .th-dsa { background: var(--c-dsa); width: 18%; }
+  .ct .th-lin { background: var(--c-lin); width: 18%; }
+  .ct td.c-mha { background: var(--bg-mha); }
+  .ct td.c-gqa { background: var(--bg-gqa); }
+  .ct td.c-mla { background: var(--bg-mla); }
+  .ct td.c-dsa { background: var(--bg-dsa); }
+  .ct td.c-lin { background: var(--bg-lin); }
+  .ct td.c-step { background: #f9fafb; font-weight: 600; font-size: 12px; color: #374151; }
+  .ct td.c-empty { background: #f3f4f6; color: #9ca3af; text-align: center; font-style: italic; }
+
+  /* smaller generic tables */
+  table.generic { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; font-family: var(--font-sans); }
+  table.generic th, table.generic td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; }
+  table.generic th { background: var(--section-bg); font-weight: 600; font-size: 12px; color: var(--heading); }
+  table.generic tr:nth-child(even) td { background: #fafbfc; }
+
+  .formula { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px 18px; margin: 12px 0; text-align: center; overflow-x: auto; }
+  .formula-label { display: block; text-align: right; font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 4px; }
+
+  .callout { border-left: 3px solid; padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; font-size: 13px; line-height: 1.65; }
+  .callout-blue   { background: var(--blue-bg);   border-color: var(--accent); }
+  .callout-green  { background: var(--green-bg);  border-color: var(--green); }
+  .callout-red    { background: var(--red-bg);     border-color: var(--red); }
+  .callout-yellow { background: var(--yellow-bg);  border-color: var(--orange); }
+  .callout-purple { background: var(--purple-bg);  border-color: var(--purple); }
+  .callout-teal   { background: var(--teal-bg);    border-color: var(--teal); }
+
+  .diagram {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 11.5px;
+    line-height: 1.5; margin: 12px 0; white-space: pre;
+  }
+
+  .katex { font-size: 1.0em; }
+  .formula .katex { font-size: 1.1em; }
+  .ct .katex { font-size: 0.92em; }
+  .katex-display { margin: 0.3em 0; }
+
+  mark { background: #fef08a; padding: 1px 3px; border-radius: 2px; }
+  .text-red { color: var(--red); font-weight: 600; }
+  .text-green { color: var(--green); font-weight: 600; }
+  .text-purple { color: var(--purple); font-weight: 600; }
+  .text-blue { color: var(--accent); font-weight: 600; }
+  .text-teal { color: var(--teal); font-weight: 600; }
+  .text-orange { color: var(--orange); font-weight: 600; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  code { font-family: var(--font-mono); font-size: 12px; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  ul, ol { margin: 6px 0 6px 22px; }
+  li { margin: 3px 0; }
+
+  @media (max-width: 900px) {
+    .ct { font-size: 11px; }
+    .ct th, .ct td { padding: 5px 6px; }
+    body { padding: 20px 12px; }
+    .toc { columns: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════ TITLE ════════════ -->
+<div class="paper-title">五大注意力机制全流程统一对比表</div>
+<div class="paper-subtitle">MHA · GQA · MLA · DSA · Linear Attention — Full Pipeline Mathematical Comparison</div>
+
+<div class="abstract">
+  <div class="abstract-title">Abstract</div>
+  本文将 MHA、GQA、MLA、DSA、Linear Attention 五种注意力机制从输入定义、训练 Prefill、KV Cache 存储到 Decode 推理的<strong>每一步计算</strong>，以统一的表格形式并排展示。所有公式精确到矩阵维度，空白单元格表示该机制无此步骤。旨在一表纵览注意力机制的演进全貌。
+</div>
+
+<div class="toc">
+  <div class="toc-title">目录</div>
+  <ul>
+    <li><a href="#s0">符号约定</a></li>
+    <li><a href="#s1">§1 训练 / Prefill 阶段</a></li>
+    <li><a href="#s2">§2 KV Cache 存储</a></li>
+    <li><a href="#s3">§3 推理 / Decode 阶段</a></li>
+    <li><a href="#s4">§4 Decode 复杂度对比</a></li>
+    <li><a href="#s5">§5 权重参数量</a></li>
+    <li><a href="#s6">§6 设计哲学与场景</a></li>
+    <li><a href="#s7">§7 演进全景</a></li>
+    <li><a href="#refs">参考文献</a></li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- ════════════ §0 符号 ════════════ -->
+<h2 id="s0"><span class="sec-num">§0</span> 符号约定</h2>
+<table class="generic">
+<thead><tr><th>符号</th><th>含义</th><th>典型值</th></tr></thead>
+<tbody>
+  <tr><td>$L$</td><td>序列长度</td><td>128K</td></tr>
+  <tr><td>$d$</td><td>模型隐藏维度</td><td>4096</td></tr>
+  <tr><td>$n_h$</td><td>Query 头数</td><td>32 / 128</td></tr>
+  <tr><td>$d_h$</td><td>每头维度 $= d/n_h$</td><td>128</td></tr>
+  <tr><td>$n_g$</td><td>GQA 的 KV 组数</td><td>8</td></tr>
+  <tr><td>$G = n_h/n_g$</td><td>每组共享 Q 头数</td><td>4</td></tr>
+  <tr><td>$g(i)$</td><td>第 $i$ 个 Q 头所属 KV 组</td><td>—</td></tr>
+  <tr><td>$d_c$</td><td>MLA 潜在空间维度</td><td>512</td></tr>
+  <tr><td>$d_r$</td><td>解耦 RoPE 维度</td><td>64</td></tr>
+  <tr><td>$k$</td><td>DSA Top-$k$ 选择数</td><td>2048</td></tr>
+  <tr><td>$n_{\text{idx}}, d_{\text{idx}}$</td><td>闪电索引器头数/维度</td><td>4, 64</td></tr>
+  <tr><td>$\phi(\cdot)$</td><td>线性注意力核特征映射</td><td>$\text{elu}(x)+1$</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- §1 PREFILL -->
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s1"><span class="sec-num">§1</span> 训练 / Prefill 阶段</h2>
+
+<h3>1.0 输入</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">输入</td>
+  <td class="c-mha">$X \in \mathbb{R}^{L \times d}$</td>
+  <td class="c-gqa">$X \in \mathbb{R}^{L \times d}$</td>
+  <td class="c-mla">$X \in \mathbb{R}^{L \times d}$</td>
+  <td class="c-dsa">$X \in \mathbb{R}^{L \times d}$</td>
+  <td class="c-lin">$X \in \mathbb{R}^{L \times d}$</td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.1 Query 投影</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Q 投影</td>
+  <td class="c-mha">$Q_i = X W_i^Q$<br>$\in \mathbb{R}^{L \times d_h}$<br>$i=1 \ldots n_h$</td>
+  <td class="c-gqa">$Q_i = X W_i^Q$<br>$\in \mathbb{R}^{L \times d_h}$<br>$i=1 \ldots n_h$</td>
+  <td class="c-mla">$c^Q = X W^{DQ}$<br>$\in \mathbb{R}^{L \times d_c'}$<br>$Q_i^C = c^Q W_i^{UQ}$<br>$\in \mathbb{R}^{L \times d_h}$</td>
+  <td class="c-dsa">同 MLA<br>$c^Q = X W^{DQ}$<br>$Q_i^C = c^Q W_i^{UQ}$</td>
+  <td class="c-lin">$Q = X W^Q$<br>$\in \mathbb{R}^{L \times d_h}$</td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.2 Key, Value 投影 ⭐</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">KV 投影<br><br><span style="font-weight:400;font-size:11px;color:#6b7280;">(核心差异)</span></td>
+  <td class="c-mha"><strong>每头独立</strong><br>$K_i = X W_i^K$<br>$V_i = X W_i^V$<br>$\in \mathbb{R}^{L \times d_h}$<br>$i=1 \ldots n_h$<br><br>生成 <strong>$n_h$ 份</strong></td>
+  <td class="c-gqa"><strong>按组共享</strong><br>$K_g = X W_g^K$<br>$V_g = X W_g^V$<br>$\in \mathbb{R}^{L \times d_h}$<br>$g=1 \ldots n_g$<br><br>生成 <strong>$n_g$ 份</strong></td>
+  <td class="c-mla"><strong>统一下投影</strong><br>$C^{KV} = X W^{DKV}$<br>$\in \mathbb{R}^{L \times d_c}$<br><br>所有头共享<br>生成 <strong>1 份</strong></td>
+  <td class="c-dsa">同 MLA<br>$C^{KV} = X W^{DKV}$<br>$\in \mathbb{R}^{L \times d_c}$<br><br>所有头共享<br>生成 <strong>1 份</strong></td>
+  <td class="c-lin">同 MHA<br>$K = X W^K$<br>$V = X W^V$<br>$\in \mathbb{R}^{L \times d_h}$<br><br>生成 <strong>1 份</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.3 KV 解压（MLA / DSA 独有）</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">KV 解压</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-mla">$K_i^C = C^{KV} W_i^{UK}$<br>$V_i^C = C^{KV} W_i^{UV}$<br>$\in \mathbb{R}^{L \times d_h}$</td>
+  <td class="c-dsa">同 MLA<br>$K_i^C = C^{KV} W_i^{UK}$<br>$V_i^C = C^{KV} W_i^{UV}$</td>
+  <td class="c-empty">—</td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.4 闪电索引器（DSA 独有）</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Lightning<br>Indexer</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-dsa">$q_t^{\text{idx}} \in \mathbb{R}^{n_{\text{idx}} \times d_{\text{idx}}}$<br>$k_s^{\text{idx}} \in \mathbb{R}^{n_{\text{idx}} \times d_{\text{idx}}}$<br><br>$I_{t,s} = \sum_j \text{ReLU}(q_{t,j}^{\text{idx}} \cdot (k_{s,j}^{\text{idx}})^\top) \cdot w_{t,j}$<br><br>$S_t = \text{Top-}k(\{I_{t,:}\})$</td>
+  <td class="c-empty">—</td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.5 核特征映射（Linear 独有）</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">$\phi(\cdot)$ 映射</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-lin">$\tilde{Q} = \phi(Q) \in \mathbb{R}^{L \times d_h}$<br>$\tilde{K} = \phi(K) \in \mathbb{R}^{L \times d_h}$<br><br>确保正值域</td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.6 位置编码 (RoPE)</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">RoPE</td>
+  <td class="c-mha"><strong>直接应用</strong><br>$\hat{Q}_i = \text{RoPE}(Q_i)$<br>$\hat{K}_i = \text{RoPE}(K_i)$</td>
+  <td class="c-gqa"><strong>直接应用</strong><br>$\hat{Q}_i = \text{RoPE}(Q_i)$<br>$\hat{K}_g = \text{RoPE}(K_g)$</td>
+  <td class="c-mla"><strong>解耦 RoPE</strong><br>$Q^R = X W^{QR} \in \mathbb{R}^{L \times d_r}$<br>$K^R = X W^{KR} \in \mathbb{R}^{L \times d_r}$<br><br>$\hat{Q}_i = [Q_i^C, \text{RoPE}(Q^R)]$<br>$\hat{K}_i = [K_i^C, \text{RoPE}(K^R)]$</td>
+  <td class="c-dsa">同 MLA<br><strong>解耦 RoPE</strong></td>
+  <td class="c-lin">通常不用 RoPE<br>（使用相对位置或无）</td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.7 Attention 矩阵计算</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Attention<br>矩阵</td>
+  <td class="c-mha"><strong>全量 $L \times L$</strong><br><br>$A_i = \hat{Q}_i \hat{K}_i^\top$<br>$\in \mathbb{R}^{L \times L}$<br><br>$S_i = \text{Softmax}\!\left(\frac{A_i}{\sqrt{d_h}}\right)$</td>
+  <td class="c-gqa"><strong>全量 $L \times L$</strong><br><br>$A_i = \hat{Q}_i \hat{K}_{g(i)}^\top$<br>$\in \mathbb{R}^{L \times L}$<br><br>$S_i = \text{Softmax}\!\left(\frac{A_i}{\sqrt{d_h}}\right)$</td>
+  <td class="c-mla"><strong>全量 $L \times L$</strong><br><br>$A_i = \hat{Q}_i \hat{K}_i^\top$<br>$\in \mathbb{R}^{L \times L}$<br><br>$S_i = \text{Softmax}\!\left(\frac{A_i}{\sqrt{d_h+d_r}}\right)$</td>
+  <td class="c-dsa"><strong>稀疏 $L \times k$</strong><br><br>仅 $s \in S_t$：<br>$A_{t,s} = \hat{Q}_t \hat{K}_s^\top$<br><br>$S_i = \text{Softmax}\!\left(\frac{A_i}{\sqrt{d_h+d_r}}\right)$</td>
+  <td class="c-lin"><strong>结合律重排</strong><br><br>$S_{\text{g}} = \tilde{K}^\top V$<br>$\in \mathbb{R}^{d_h \times d_h}$<br><br><strong>无 Softmax</strong><br>无 $L \times L$ 矩阵</td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.8 加权输出 &amp; Output 投影</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">加权求和</td>
+  <td class="c-mha">$O_i = S_i V_i$<br>$\in \mathbb{R}^{L \times d_h}$</td>
+  <td class="c-gqa">$O_i = S_i V_{g(i)}$<br>$\in \mathbb{R}^{L \times d_h}$</td>
+  <td class="c-mla">$O_i = S_i V_i^C$<br>$\in \mathbb{R}^{L \times d_h}$</td>
+  <td class="c-dsa">$O_t = \!\sum_{s \in S_t}\! S_{t,s} V_s^C$<br>$\in \mathbb{R}^{L \times d_h}$</td>
+  <td class="c-lin">$O = \frac{\tilde{Q} S_{\text{g}}}{\tilde{Q} Z_{\text{g}}}$<br>$Z_{\text{g}} = \tilde{K}^\top \mathbf{1}_L$</td>
+</tr>
+<tr>
+  <td class="c-step">Output 投影</td>
+  <td class="c-mha" colspan="5" style="text-align:center; background:#f9fafb;">
+    全部相同：$O = \text{Concat}(O_1, \ldots, O_{n_h}) W^O \in \mathbb{R}^{L \times d}$
+  </td>
+</tr>
+</tbody>
+</table>
+
+<h3>1.9 Prefill 复杂度</h3>
+<table class="ct">
+<thead><tr><th class="th-step"></th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">时间</td>
+  <td class="c-mha">$O(L^2 d)$</td>
+  <td class="c-gqa">$O(L^2 d)$</td>
+  <td class="c-mla">$O(L^2 d)$</td>
+  <td class="c-dsa">$O(L^2 d_{\text{idx}})$<br>$+\;O(Lkd)$</td>
+  <td class="c-lin">$O(L d_h d)$</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- §2 KV CACHE -->
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s2"><span class="sec-num">§2</span> KV Cache 存储</h2>
+
+<h3>2.1 物理存储内容</h3>
+<table class="ct">
+<thead><tr><th class="th-step"></th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Cache 内容</td>
+  <td class="c-mha">$\{\hat{K}_i, V_i\}_{i=1}^{n_h}$<br><br>全量 K, V</td>
+  <td class="c-gqa">$\{\hat{K}_g, V_g\}_{g=1}^{n_g}$<br><br>分组 K, V</td>
+  <td class="c-mla">$\{C^{KV}, K^{\text{RoPE}}\}$<br><br>潜向量 + RoPE Key</td>
+  <td class="c-dsa">$\{C^{KV}, K^{\text{RoPE}}, k^{\text{idx}}\}$<br><br>+ 索引 Key</td>
+  <td class="c-lin">$\{S_t, Z_t\}$<br><br>隐状态 + 归一化</td>
+</tr>
+</tbody>
+</table>
+
+<h3>2.2 每 Token 维度 &amp; 增长</h3>
+<table class="ct">
+<thead><tr><th class="th-step"></th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">每 Token 维度</td>
+  <td class="c-mha">$2 n_h d_h$<br><strong>= 8192</strong></td>
+  <td class="c-gqa">$2 n_g d_h$<br><strong>= 2048</strong></td>
+  <td class="c-mla">$d_c + d_r$<br><strong>= 576</strong></td>
+  <td class="c-dsa">$d_c + d_r + n_{\text{idx}}d_{\text{idx}}$<br><strong>= 832</strong></td>
+  <td class="c-lin">—<br>(不随 Token 增长)</td>
+</tr>
+<tr>
+  <td class="c-step">vs MHA 压缩比</td>
+  <td class="c-mha">1×</td>
+  <td class="c-gqa">4×</td>
+  <td class="c-mla"><strong>14.2×</strong></td>
+  <td class="c-dsa"><strong>9.8×</strong></td>
+  <td class="c-lin">—</td>
+</tr>
+<tr>
+  <td class="c-step">增长方式</td>
+  <td class="c-mha">$O(L)$ 线性</td>
+  <td class="c-gqa">$O(L)$ 线性</td>
+  <td class="c-mla">$O(L)$ 线性</td>
+  <td class="c-dsa">$O(L)$ 线性</td>
+  <td class="c-lin"><mark>$O(1)$ 恒定！</mark></td>
+</tr>
+<tr>
+  <td class="c-step">128K<br>每层 FP16</td>
+  <td class="c-mha"><span class="text-red">~8 GB</span></td>
+  <td class="c-gqa">~2 GB</td>
+  <td class="c-mla">~140 MB</td>
+  <td class="c-dsa">~210 MB</td>
+  <td class="c-lin"><span class="text-green">~32 KB</span></td>
+</tr>
+</tbody>
+</table>
+
+<h3>2.3 Cache 数学表达（矩阵维度）</h3>
+<table class="ct">
+<thead><tr><th class="th-step">存储项</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">K Cache</td>
+  <td class="c-mha">$\in \mathbb{R}^{L \times n_h \times d_h}$</td>
+  <td class="c-gqa">$\in \mathbb{R}^{L \times n_g \times d_h}$</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+</tr>
+<tr>
+  <td class="c-step">V Cache</td>
+  <td class="c-mha">$\in \mathbb{R}^{L \times n_h \times d_h}$</td>
+  <td class="c-gqa">$\in \mathbb{R}^{L \times n_g \times d_h}$</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+</tr>
+<tr>
+  <td class="c-step">$C^{KV}$</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-mla">$\in \mathbb{R}^{L \times d_c}$</td>
+  <td class="c-dsa">$\in \mathbb{R}^{L \times d_c}$</td>
+  <td class="c-empty">—</td>
+</tr>
+<tr>
+  <td class="c-step">$K^{\text{RoPE}}$</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-mla">$\in \mathbb{R}^{L \times d_r}$</td>
+  <td class="c-dsa">$\in \mathbb{R}^{L \times d_r}$</td>
+  <td class="c-empty">—</td>
+</tr>
+<tr>
+  <td class="c-step">$k^{\text{idx}}$</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-dsa">$\in \mathbb{R}^{L \times n_{\text{idx}}d_{\text{idx}}}$</td>
+  <td class="c-empty">—</td>
+</tr>
+<tr>
+  <td class="c-step">$S_t$ (隐状态)</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-lin">$\in \mathbb{R}^{d_h \times d_h}$</td>
+</tr>
+<tr>
+  <td class="c-step">$Z_t$ (归一化)</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-lin">$\in \mathbb{R}^{d_h \times 1}$</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- §3 DECODE -->
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s3"><span class="sec-num">§3</span> 推理 / Decode 阶段（输入新词 $x_t \in \mathbb{R}^{1 \times d}$）</h2>
+
+<h3>3.1 Query 投影</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Decode<br>Q 投影</td>
+  <td class="c-mha">$q_{t,i} = \text{RoPE}(x_t W_i^Q)$<br>$\in \mathbb{R}^{1 \times d_h}$</td>
+  <td class="c-gqa">$q_{t,i} = \text{RoPE}(x_t W_i^Q)$<br>$\in \mathbb{R}^{1 \times d_h}$</td>
+  <td class="c-mla">$c_t^Q = x_t W^{DQ}$<br>$q_{t,i}^C = c_t^Q W_i^{UQ}$<br>$q_{t,i}^R = \text{RoPE}(x_t W^{QR})$</td>
+  <td class="c-dsa">同 MLA<br>+ 索引 Query：<br>$q_t^{\text{idx}} = \text{FP8}(x_t W^{Q_{\text{idx}}})$</td>
+  <td class="c-lin">$\tilde{q}_t = \phi(x_t W^Q)$<br>$\in \mathbb{R}^{1 \times d_h}$</td>
+</tr>
+</tbody>
+</table>
+
+<h3>3.2 索引器粗筛（DSA 独有）</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">闪电索引</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-dsa">$I_{t,s} = \sum_j \text{ReLU}(q_{t,j}^{\text{idx}} \cdot (k_{s,j}^{\text{idx}})^\top) w_{t,j}$<br>$S_t = \text{Top-}k(\{I_{t,:}\})$<br><br>FP8 精度，FLOPs: $n_{\text{idx}} d_{\text{idx}} L$</td>
+  <td class="c-empty">—</td>
+</tr>
+</tbody>
+</table>
+
+<h3>3.3 Cache 读取 / 状态更新</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">读取 /<br>更新</td>
+  <td class="c-mha"><strong>全量读取</strong><br>$K_i^{\text{c}} \in \mathbb{R}^{L \times d_h}$<br>$V_i^{\text{c}} \in \mathbb{R}^{L \times d_h}$<br><br>IO: $2n_hd_hL$</td>
+  <td class="c-gqa"><strong>按组读取</strong><br>$K_{g(i)}^{\text{c}} \in \mathbb{R}^{L \times d_h}$<br>$V_{g(i)}^{\text{c}} \in \mathbb{R}^{L \times d_h}$<br><br>IO: $2n_gd_hL$</td>
+  <td class="c-mla"><strong>全量读取</strong><br>$C^{KV} \in \mathbb{R}^{L \times d_c}$<br><br>IO: $(d_c+d_r)L$</td>
+  <td class="c-dsa"><strong>Gather Top-$k$</strong><br>$C^{KV}[S_t] \in \mathbb{R}^{k \times d_c}$<br>$K^{\text{RoPE}}[S_t] \in \mathbb{R}^{k \times d_r}$<br><br>IO: $(d_c+d_r)k$</td>
+  <td class="c-lin"><strong>外积累加</strong><br>$S_t = S_{t-1} + \tilde{k}_t^\top v_t$<br>$Z_t = Z_{t-1} + \tilde{k}_t^\top$<br><br>IO: $d_h^2 + d_h$</td>
+</tr>
+</tbody>
+</table>
+
+<h3>3.4 矩阵吸收（MLA / DSA 独有）</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Q 吸收<br>$W^{UK}$</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-mla">$\tilde{q}_{t,i}^C = q_{t,i}^C (W_i^{UK})^\top$<br>$\in \mathbb{R}^{1 \times d_c}$<br><br><strong>永不解压 Cache</strong></td>
+  <td class="c-dsa">同 MLA<br>$\tilde{q}_{t,i}^C = q_{t,i}^C (W_i^{UK})^\top$<br>$\in \mathbb{R}^{1 \times d_c}$</td>
+  <td class="c-empty">—</td>
+</tr>
+</tbody>
+</table>
+
+<h3>3.5 Attention Score 计算</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Score</td>
+  <td class="c-mha">$q_{t,i} \cdot (K_i^{\text{c}})^\top$<br>$\in \mathbb{R}^{1 \times L}$</td>
+  <td class="c-gqa">$q_{t,i} \cdot (K_{g(i)}^{\text{c}})^\top$<br>$\in \mathbb{R}^{1 \times L}$</td>
+  <td class="c-mla">$\underbrace{\tilde{q}_{t,i}^C (C^{KV})^\top}_{\text{语义}}$<br>$+\; \underbrace{q_{t,i}^R (K^{\text{RoPE}})^\top}_{\text{位置}}$<br>$\in \mathbb{R}^{1 \times L}$</td>
+  <td class="c-dsa">$\tilde{q}_{t,i}^C (C^{KV}[S_t])^\top$<br>$+ q_{t,i}^R (K^{\text{RoPE}}[S_t])^\top$<br>$\in \mathbb{R}^{1 \times k}$</td>
+  <td class="c-lin">（无此步）<br>直接查状态矩阵</td>
+</tr>
+</tbody>
+</table>
+
+<h3>3.6 加权求和 (Value)</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">V 加权</td>
+  <td class="c-mha">$o_{t,i} = \text{sm} \cdot V_i^{\text{c}}$<br>$\in \mathbb{R}^{1 \times d_h}$</td>
+  <td class="c-gqa">$o_{t,i} = \text{sm} \cdot V_{g(i)}^{\text{c}}$<br>$\in \mathbb{R}^{1 \times d_h}$</td>
+  <td class="c-mla"><strong>V 吸收</strong><br>$u_{t,i} = \text{sm} \cdot C^{KV}$<br>$\in \mathbb{R}^{1 \times d_c}$</td>
+  <td class="c-dsa"><strong>V 吸收</strong><br>$u_{t,i} = \text{sm} \cdot C^{KV}[S_t]$<br>$\in \mathbb{R}^{1 \times d_c}$</td>
+  <td class="c-lin">$o_t = \frac{\tilde{q}_t S_t}{\tilde{q}_t Z_t}$<br>$\in \mathbb{R}^{1 \times d_h}$</td>
+</tr>
+</tbody>
+</table>
+
+<h3>3.7 Output 投影</h3>
+<table class="ct">
+<thead><tr><th class="th-step">步骤</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">Output</td>
+  <td class="c-mha">$o_t = \sum_i o_{t,i} W_i^O$</td>
+  <td class="c-gqa">$o_t = \sum_i o_{t,i} W_i^O$</td>
+  <td class="c-mla"><strong>O 吸收</strong><br>$o_t = \sum_i u_{t,i} \underbrace{W_i^{UV} W_i^O}_{W_i^{UV\_O}}$<br>预计算融合权重</td>
+  <td class="c-dsa">同 MLA<br>$o_t = \sum_i u_{t,i} W_i^{UV\_O}$</td>
+  <td class="c-lin">$o_t = o_t W^O$</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- §4 COMPLEXITY -->
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s4"><span class="sec-num">§4</span> Decode 单步复杂度与性能对比</h2>
+
+<h3>4.1 计算复杂度</h3>
+<table class="ct">
+<thead><tr><th class="th-step"></th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">索引器</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-dsa">$O(L \cdot d_{\text{idx}} \cdot n_{\text{idx}})$<br>(FP8)</td>
+  <td class="c-empty">—</td>
+</tr>
+<tr>
+  <td class="c-step">Attention</td>
+  <td class="c-mha">$O(L \cdot d_h \cdot n_h)$</td>
+  <td class="c-gqa">$O(L \cdot d_h \cdot n_h)$</td>
+  <td class="c-mla">$O(L \cdot d_c \cdot n_h)$</td>
+  <td class="c-dsa">$O(k \cdot d_c \cdot n_h)$</td>
+  <td class="c-lin">$O(d_h^2 \cdot n_h)$</td>
+</tr>
+<tr>
+  <td class="c-step"><strong>总计</strong></td>
+  <td class="c-mha"><span class="text-red">$O(Ld)$</span></td>
+  <td class="c-gqa"><span class="text-red">$O(Ld)$</span></td>
+  <td class="c-mla"><span class="text-orange">$O(Ld)$</span></td>
+  <td class="c-dsa"><span class="text-teal">$O(Ld_{\text{idx}})+O(kd)$</span></td>
+  <td class="c-lin"><span class="text-green">$O(d_hd)$</span></td>
+</tr>
+<tr>
+  <td class="c-step">随 $L$</td>
+  <td class="c-mha">线性 ↑</td>
+  <td class="c-gqa">线性 ↑</td>
+  <td class="c-mla">线性 ↑</td>
+  <td class="c-dsa">仅索引器线性 ↑</td>
+  <td class="c-lin"><mark>恒定</mark></td>
+</tr>
+</tbody>
+</table>
+
+<h3>4.2 Cache IO 读取量（128K，每层 FP16）</h3>
+<table class="ct">
+<thead><tr><th class="th-step"></th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">读取</td>
+  <td class="c-mha"><span class="text-red">~8 GB</span></td>
+  <td class="c-gqa">~2 GB</td>
+  <td class="c-mla">~140 MB</td>
+  <td class="c-dsa">~2.3 MB<br>+ 33 MB (idx)</td>
+  <td class="c-lin"><span class="text-green">~32 KB</span></td>
+</tr>
+<tr>
+  <td class="c-step">vs MHA</td>
+  <td class="c-mha">1×</td>
+  <td class="c-gqa">4×</td>
+  <td class="c-mla"><strong>57×</strong></td>
+  <td class="c-dsa"><strong>~3640×</strong></td>
+  <td class="c-lin"><strong>~250,000×</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>4.3 延迟随序列长度变化</h3>
+<table class="ct">
+<thead><tr><th class="th-step">$L$</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr><td class="c-step">4K</td><td class="c-mha">基准</td><td class="c-gqa">基准</td><td class="c-mla">基准</td><td class="c-dsa">~基准</td><td class="c-lin">基准</td></tr>
+<tr><td class="c-step">32K</td><td class="c-mha">8×</td><td class="c-gqa">8×</td><td class="c-mla">8×</td><td class="c-dsa">idx 8×,<br>主注意力不变</td><td class="c-lin"><strong>不变</strong></td></tr>
+<tr><td class="c-step">128K</td><td class="c-mha">32×</td><td class="c-gqa">32×</td><td class="c-mla">32×</td><td class="c-dsa">idx 32×,<br>主注意力不变</td><td class="c-lin"><strong>不变</strong></td></tr>
+<tr><td class="c-step">1M</td><td class="c-mha">256×</td><td class="c-gqa">256×</td><td class="c-mla">256×</td><td class="c-dsa">idx 256×,<br>主注意力不变</td><td class="c-lin"><strong>不变</strong></td></tr>
+</tbody>
+</table>
+
+<h3>4.4 瓶颈类型</h3>
+<table class="ct">
+<thead><tr><th class="th-step"></th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">瓶颈</td>
+  <td class="c-mha">Memory BW</td>
+  <td class="c-gqa">Memory BW<br>（缓解）</td>
+  <td class="c-mla">Memory BW<br>（大幅缓解）</td>
+  <td class="c-dsa">idx BW (极小)<br>+ Compute</td>
+  <td class="c-lin">Compute</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- §5 PARAMS -->
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s5"><span class="sec-num">§5</span> 训练权重参数量（每层注意力模块）</h2>
+
+<table class="ct">
+<thead><tr><th class="th-step">权重</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">$W^Q$</td>
+  <td class="c-mha">$n_h \times (d \times d_h)$</td>
+  <td class="c-gqa">$n_h \times (d \times d_h)$</td>
+  <td class="c-mla">$W^{DQ}: d \times d_c'$<br>+ $n_h \times (d_c' \times d_h)$</td>
+  <td class="c-dsa">同 MLA</td>
+  <td class="c-lin">$d \times d_h$</td>
+</tr>
+<tr>
+  <td class="c-step">$W^K$</td>
+  <td class="c-mha">$n_h \times (d \times d_h)$</td>
+  <td class="c-gqa">$n_g \times (d \times d_h)$</td>
+  <td class="c-mla">$W^{DKV}: d \times d_c$<br>+ $n_h \times (d_c \times d_h)$</td>
+  <td class="c-dsa">同 MLA</td>
+  <td class="c-lin">$d \times d_h$</td>
+</tr>
+<tr>
+  <td class="c-step">$W^V$</td>
+  <td class="c-mha">$n_h \times (d \times d_h)$</td>
+  <td class="c-gqa">$n_g \times (d \times d_h)$</td>
+  <td class="c-mla">含在 $W^{DKV}$ + $W_i^{UV}$</td>
+  <td class="c-dsa">同 MLA</td>
+  <td class="c-lin">$d \times d_h$</td>
+</tr>
+<tr>
+  <td class="c-step">$W^O$</td>
+  <td class="c-mha">$d \times d$</td>
+  <td class="c-gqa">$d \times d$</td>
+  <td class="c-mla">$d \times d$</td>
+  <td class="c-dsa">$d \times d$</td>
+  <td class="c-lin">$d \times d$</td>
+</tr>
+<tr>
+  <td class="c-step">RoPE</td>
+  <td class="c-mha">（无权重）</td>
+  <td class="c-gqa">（无权重）</td>
+  <td class="c-mla">$W^{QR}: d \times d_r$<br>$W^{KR}: d \times d_r$</td>
+  <td class="c-dsa">同 MLA</td>
+  <td class="c-empty">—</td>
+</tr>
+<tr>
+  <td class="c-step">索引器</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-empty">—</td>
+  <td class="c-dsa">$W^{Q_{\text{idx}}}: d \times n_{\text{idx}}d_{\text{idx}}$<br>$W^{K_{\text{idx}}}: d \times n_{\text{idx}}d_{\text{idx}}$<br>$w_{t,j}$（门控）</td>
+  <td class="c-empty">—</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- §6 PHILOSOPHY -->
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s6"><span class="sec-num">§6</span> 设计哲学与适用场景</h2>
+
+<table class="ct">
+<thead><tr><th class="th-step">维度</th><th class="th-mha">MHA</th><th class="th-gqa">GQA</th><th class="th-mla">MLA</th><th class="th-dsa">DSA</th><th class="th-lin">Linear</th></tr></thead>
+<tbody>
+<tr>
+  <td class="c-step">压缩策略</td>
+  <td class="c-mha">无</td>
+  <td class="c-gqa">KV 头裁撤<br>（物理裁撤）</td>
+  <td class="c-mla">KV 特征压缩<br>（化学提纯）</td>
+  <td class="c-dsa">序列稀疏<br>+ 特征压缩</td>
+  <td class="c-lin">全量坍缩<br>为固定状态</td>
+</tr>
+<tr>
+  <td class="c-step">精确检索</td>
+  <td class="c-mha">★★★★★</td>
+  <td class="c-gqa">★★★★☆</td>
+  <td class="c-mla">★★★★☆</td>
+  <td class="c-dsa">★★★★☆</td>
+  <td class="c-lin">★★★☆☆</td>
+</tr>
+<tr>
+  <td class="c-step">超长文本</td>
+  <td class="c-mha">✗（OOM）</td>
+  <td class="c-gqa">✗（缓解但 $O(L)$）</td>
+  <td class="c-mla">△（Cache $O(L)$）</td>
+  <td class="c-dsa">✓（Decode $O(k)$）</td>
+  <td class="c-lin">✓✓（Cache $O(1)$）</td>
+</tr>
+<tr>
+  <td class="c-step">实现复杂度</td>
+  <td class="c-mha">低</td>
+  <td class="c-gqa">低</td>
+  <td class="c-mla">高</td>
+  <td class="c-dsa">极高</td>
+  <td class="c-lin">中</td>
+</tr>
+<tr>
+  <td class="c-step">生态兼容</td>
+  <td class="c-mha">所有框架</td>
+  <td class="c-gqa">所有主流框架</td>
+  <td class="c-mla">需专用算子</td>
+  <td class="c-dsa">需专用算子</td>
+  <td class="c-lin">需专用算子</td>
+</tr>
+<tr>
+  <td class="c-step">代表模型</td>
+  <td class="c-mha">GPT-3/4</td>
+  <td class="c-gqa">LLaMA-3<br>Qwen-2</td>
+  <td class="c-mla">DeepSeek-V2/V3</td>
+  <td class="c-dsa">DeepSeek<br>下一代</td>
+  <td class="c-lin">Mamba<br>RWKV<br>RetNet</td>
+</tr>
+<tr>
+  <td class="c-step">最佳场景</td>
+  <td class="c-mha">通用基准</td>
+  <td class="c-gqa">生产部署<br>（性价比优）</td>
+  <td class="c-mla">长上下文<br>低成本推理</td>
+  <td class="c-dsa">百万级上下文</td>
+  <td class="c-lin">流式生成<br>无限对话</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- §7 EVOLUTION -->
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s7"><span class="sec-num">§7</span> 注意力机制演进全景</h2>
+
+<div class="formula">
+  $$\underbrace{\text{MHA}}_{O(L^2),\;O(L)_{\text{dec}}} \xrightarrow{\text{头裁撤}} \underbrace{\text{GQA}}_{O(L^2),\;O(L)_{\text{dec}}} \xrightarrow{\text{特征压缩}} \underbrace{\text{MLA}}_{O(L^2),\;O(L)_{\text{dec}}} \xrightarrow{\text{序列压缩}} \underbrace{\text{DSA}}_{O(Lk),\;O(k)_{\text{dec}}} \xrightarrow{\text{结合律}} \underbrace{\text{Linear}}_{O(Ld_h^2),\;O(1)_{\text{dec}}}$$
+  <span class="formula-label">注意力机制演进公式</span>
+</div>
+
+<div class="callout callout-yellow">
+  <strong>注意：</strong>这不是简单的"越新越好"。MHA 和 GQA 在精确检索上无可替代；线性注意力在超长流式场景中优势巨大。现代最优架构（如 Jamba, Zamba）倾向于<strong>混合使用</strong>多种注意力机制。
+</div>
+
+<hr>
+
+<!-- ════════════ References ════════════ -->
+<h2 id="refs"><span class="sec-num">Ref</span> 参考文献</h2>
+<ol style="font-size:12.5px; line-height:1.7;">
+  <li>Vaswani, A. et al. <em>Attention Is All You Need.</em> NeurIPS 2017.</li>
+  <li>Ainslie, J. et al. <em>GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints.</em> EMNLP 2023.</li>
+  <li>DeepSeek-AI. <em>DeepSeek-V2: A Strong, Economical, and Efficient MoE Language Model.</em> 2024.</li>
+  <li>DeepSeek-AI. <em>Native Sparse Attention: Hardware-Aligned and Natively Trainable Sparse Attention.</em> 2025.</li>
+  <li>Katharopoulos, A. et al. <em>Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention.</em> ICML 2020.</li>
+  <li>Gu, A. &amp; Dao, T. <em>Mamba: Linear-Time Sequence Modeling with Selective State Spaces.</em> 2023.</li>
+</ol>
+
+</body>
+</html>

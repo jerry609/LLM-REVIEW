@@ -117,6 +117,7 @@
 
 | [`mha-vs-dsa-full-derivation.md`](notes/attention/mha-vs-dsa-full-derivation.md) | **MHA vs DSA 全流程对比**：闪电索引器、ReLU 替代 Softmax、序列×特征双重压缩 3640× |
 | [`mha-vs-linear-attention-full-derivation.md`](notes/attention/mha-vs-linear-attention-full-derivation.md) | **MHA vs 线性注意力全流程对比**：结合律消除 $L^2$、RNN 等价、状态压缩瓶颈、前沿变体 |
+| [`attention-mechanisms-unified-comparison.md`](notes/attention/attention-mechanisms-unified-comparison.md) | **五大注意力统一对比表**：MHA/GQA/MLA/DSA/Linear 全流程并排矩阵推导（Excel 风格） |
 | [`flashattention.md`](notes/attention/flashattention.md) | FlashAttention 原理与实现细节 |
 | [`linear-attention.md`](notes/attention/linear-attention.md) | 线性注意力机制（Mamba、RWKV） |
 | [`long-context.md`](notes/attention/long-context.md) | 长上下文处理技术 |
@@ -225,6 +226,7 @@
 | [`mha-vs-gqa-full-derivation.html`](notebooks/mha-vs-gqa-full-derivation.html) | **MHA vs GQA 全流程对比**：分组共享 + SRAM 复用 + Roofline 性能分析 |
 | [`mha-vs-dsa-full-derivation.html`](notebooks/mha-vs-dsa-full-derivation.html) | **MHA vs DSA 全流程对比**：闪电索引器 + 稀疏 MLA + 3640× 带宽压缩 |
 | [`mha-vs-linear-attention-full-derivation.html`](notebooks/mha-vs-linear-attention-full-derivation.html) | **MHA vs 线性注意力全流程对比**：结合律 + RNN 等价 + 恒定 Cache |
+| [`attention-mechanisms-unified-comparison.html`](notebooks/attention-mechanisms-unified-comparison.html) | **五大注意力统一对比表**：MHA/GQA/MLA/DSA/Linear 全流程并排（彩色表格） |
 | [`kv_cache_pipeline.html`](notebooks/kv_cache_pipeline.html) | KV Cache 压缩流水线：H2O / StreamingLLM / SnapKV / Ada-KV / ACTA |
 
 ### Jupyter Notebook 实验
