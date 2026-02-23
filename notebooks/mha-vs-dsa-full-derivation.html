@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>传统 MHA vs DSA：全流程数学与矩阵推导对比</title>
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '$', right: '$', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --border: #d1d5db;
+    --code-bg: #f8f9fa;
+    --section-bg: #fafbfc;
+    --heading: #0f172a;
+    --muted: #64748b;
+    --red: #dc2626;
+    --green: #16a34a;
+    --orange: #ea580c;
+    --purple: #7c3aed;
+    --teal: #0d9488;
+    --yellow-bg: #fefce8;
+    --blue-bg: #eff6ff;
+    --green-bg: #f0fdf4;
+    --red-bg: #fef2f2;
+    --purple-bg: #faf5ff;
+    --teal-bg: #f0fdfa;
+    --font-serif: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-serif);
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.85;
+    font-size: 15px;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 28px 80px;
+  }
+
+  /* ── Title Block ── */
+  .paper-title {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--heading);
+    text-align: center;
+    margin-bottom: 10px;
+    letter-spacing: -0.2px;
+    line-height: 1.35;
+  }
+  .paper-subtitle {
+    text-align: center;
+    color: var(--heading);
+    font-size: 15px;
+    font-style: italic;
+    margin-bottom: 28px;
+    font-family: var(--font-serif);
+  }
+
+  /* ── Typography ── */
+  h2 {
+    font-family: var(--font-serif);
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--heading);
+    margin: 38px 0 14px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2 .sec-num {
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  h3 {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--heading);
+    margin: 22px 0 8px;
+  }
+  h4 {
+    font-family: var(--font-sans);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--purple);
+    margin: 16px 0 6px;
+  }
+
+  p { margin: 8px 0; text-align: justify; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  /* ── Code / Pre ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 12px 0;
+    white-space: pre;
+    color: #1e293b;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent);
+  }
+
+  /* ── Diagram boxes ── */
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 14px 0;
+    white-space: pre;
+  }
+
+  /* ── LaTeX formula blocks ── */
+  .formula {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .formula-label {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    margin-top: 6px;
+  }
+  .formula-group {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    overflow-x: auto;
+  }
+  .formula-row { margin: 4px 0; }
+  .formula-note {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.65;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+  }
+
+  /* ── Boxed formula ── */
+  .formula-boxed {
+    background: var(--yellow-bg);
+    border: 2px solid var(--orange);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+
+  /* KaTeX overrides */
+  .katex { font-size: 1.05em; }
+  .formula .katex { font-size: 1.15em; }
+  .formula-boxed .katex { font-size: 1.15em; }
+  .formula-group .katex { font-size: 1.1em; }
+  .katex-display { margin: 0.5em 0; }
+
+  /* ── Callout boxes ── */
+  .callout {
+    border-left: 3px solid;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .callout-blue   { background: var(--blue-bg);   border-color: var(--accent); }
+  .callout-green  { background: var(--green-bg);  border-color: var(--green); }
+  .callout-red    { background: var(--red-bg);     border-color: var(--red); }
+  .callout-yellow { background: var(--yellow-bg);  border-color: var(--orange); }
+  .callout-purple { background: var(--purple-bg);  border-color: var(--purple); }
+  .callout-teal   { background: var(--teal-bg);   border-color: var(--teal); }
+  .callout strong { font-weight: 600; }
+
+  /* ── Theorem / Definition / Remark boxes ── */
+  .theorem-box {
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    margin: 16px 0;
+    background: var(--blue-bg);
+    border-radius: 0 4px 4px 0;
+  }
+  .theorem-box .theorem-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+  .key-box {
+    border: 2px solid var(--purple);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    background: var(--purple-bg);
+  }
+  .key-box .key-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--purple);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+  /* ── Star box ── */
+  .star-box {
+    border: 2px solid var(--teal);
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin: 16px 0;
+    background: var(--teal-bg);
+  }
+  .star-box .star-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--teal);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13.5px;
+    font-family: var(--font-sans);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: var(--section-bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--heading);
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* ── Comparison table ── */
+  .compare-table th:first-child { width: 20%; }
+  .compare-table .col-mha { background: #eff6ff; }
+  .compare-table .col-dsa { background: #f0fdf4; }
+  .compare-table th.col-mha { background: var(--accent); color: #fff; }
+  .compare-table th.col-dsa { background: var(--green); color: #fff; }
+
+  /* ── Lists ── */
+  ul, ol { margin: 8px 0 8px 24px; }
+  li { margin: 4px 0; }
+
+  /* ── Divider ── */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  /* ── Abstract ── */
+  .abstract {
+    background: var(--section-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin: 0 0 28px;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  .abstract-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--section-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 22px;
+    margin: 0 0 28px;
+    font-size: 13.5px;
+  }
+  .toc-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--heading);
+    margin-bottom: 8px;
+    font-family: var(--font-sans);
+  }
+  .toc a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .toc ul { margin: 4px 0 4px 20px; list-style: none; }
+  .toc ul li::before {
+    content: "·";
+    color: var(--muted);
+    margin-right: 6px;
+  }
+
+  /* ── Highlight marker ── */
+  mark {
+    background: #fef08a;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .text-red { color: var(--red); font-weight: 600; }
+  .text-green { color: var(--green); font-weight: 600; }
+  .text-purple { color: var(--purple); font-weight: 600; }
+  .text-blue { color: var(--accent); font-weight: 600; }
+  .text-teal { color: var(--teal); font-weight: 600; }
+  .text-orange { color: var(--orange); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- TITLE -->
+<!-- ════════════════════════════════════════════ -->
+<div class="paper-title">传统 MHA vs DSA：全流程数学与矩阵推导对比</div>
+<div class="paper-subtitle">Multi-Head Attention vs DeepSeek Dynamic Sparse Attention — Full-Process Mathematical Derivation</div>
+
+<!-- ════════ Abstract ════════ -->
+<div class="abstract">
+  <div class="abstract-title">Abstract</div>
+  本文以严格的数学形式，完整推导 Multi-Head Attention (MHA) 与 DeepSeek Dynamic/Native Sparse Attention (DSA) 在 Prefill 和 Decode 两个阶段的每一步计算。DSA 的核心创新在于引入一个极轻量的<strong>闪电索引器（Lightning Indexer）</strong>，在执行主注意力之前先以 $O(L \cdot d_{\text{idx}})$ 的超低代价全局扫描历史 Token，选出 Top-$k$ 个最相关的 Token，然后仅在这 $k$ 个 Token 上执行底层为 MLA 的注意力计算。这实现了<strong>"序列压缩（DSA）" &times; "特征压缩（MLA）"</strong>的乘法级显存节省。
+</div>
+
+<!-- ════════ TOC ════════ -->
+<div class="toc">
+  <div class="toc-title">目录 · Table of Contents</div>
+  <ul>
+    <li><a href="#sec0">核心思想对比 &amp; 符号约定</a></li>
+    <li><a href="#sec1">§1 输入定义</a></li>
+    <li><a href="#sec2">§2 闪电索引器 — DSA 核心独创阶段</a></li>
+    <li><a href="#sec3">§3 Token 稀疏路由</a></li>
+    <li><a href="#sec4">§4 主注意力 K、V 投影</a></li>
+    <li><a href="#sec5">§5 Attention 计算（Prefill 阶段）</a></li>
+    <li><a href="#sec6">§6 KV Cache 存储阶段</a></li>
+    <li><a href="#sec7">§7 推理 / Decode 阶段</a></li>
+    <li><a href="#sec8">§8 单步 Decode 复杂度对比</a></li>
+    <li><a href="#sec9">§9 DSA 的三大工程奇迹</a></li>
+    <li><a href="#sec10">§10 DSA Decode 完整伪代码</a></li>
+    <li><a href="#sec11">§11 全局因果链</a></li>
+    <li><a href="#sec12">§12 注意力机制演进中的位置</a></li>
+    <li><a href="#refs">参考文献</a></li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §0 核心思想 & 符号 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec0"><span class="sec-num">§0</span> 核心思想对比</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th class="col-mha">MHA（全局稠密注意力）</th>
+      <th class="col-dsa">DSA（闪电索引 + 稀疏 MLA）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>计算范围</strong></td>
+      <td class="col-mha">每个 Query 必须与<strong>全部 $L$ 个</strong> Key/Value 做点积</td>
+      <td class="col-dsa">先粗筛 Top-$k$ 个 Token，再仅在 $k$ 个上计算</td>
+    </tr>
+    <tr>
+      <td><strong>复杂度</strong></td>
+      <td class="col-mha">$O(L^2 \cdot d)$</td>
+      <td class="col-dsa">$O(L \cdot d_{\text{idx}}) + O(k \cdot d)$</td>
+    </tr>
+    <tr>
+      <td><strong>底层 KV 架构</strong></td>
+      <td class="col-mha">标准 MHA（高维 K/V）</td>
+      <td class="col-dsa">MLA（低维潜在向量 $C^{KV}$）</td>
+    </tr>
+    <tr>
+      <td><strong>压缩维度</strong></td>
+      <td class="col-mha">无压缩</td>
+      <td class="col-dsa"><mark>序列维度 &times; 特征维度</mark> 双重压缩</td>
+    </tr>
+    <tr>
+      <td><strong>类比</strong></td>
+      <td class="col-mha">侦探翻遍整栋图书馆的每一本书</td>
+      <td class="col-dsa">先用电子目录搜索出 2048 条线索，再精读这 2048 本</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>符号约定</h3>
+
+<table>
+  <thead>
+    <tr><th>符号</th><th>含义</th><th>典型值</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>$L$</td><td>历史序列总长度</td><td>128K+</td></tr>
+    <tr><td>$d$</td><td>模型隐藏维度</td><td>5120</td></tr>
+    <tr><td>$n_h$</td><td>注意力头数</td><td>128</td></tr>
+    <tr><td>$d_h$</td><td>每头维度 $= d / n_h$</td><td>128</td></tr>
+    <tr><td>$k$</td><td>稀疏挑选的 Top-$k$ Token 数</td><td>2048 ($k \ll L$)</td></tr>
+    <tr><td>$S_t$</td><td>当前 Token $t$ 的 Top-$k$ 历史索引集合</td><td>$|S_t| = k$</td></tr>
+    <tr><td>$n_{\text{idx}}$</td><td>闪电索引器头数</td><td>4（极小）</td></tr>
+    <tr><td>$d_{\text{idx}}$</td><td>闪电索引器特征维度</td><td>64（极小）</td></tr>
+    <tr><td>$I_{t,s}$</td><td>索引器算出的 Query $t$ 与 Key $s$ 的相关性分数</td><td>标量</td></tr>
+    <tr><td>$d_c$</td><td>MLA 潜在空间维度</td><td>512</td></tr>
+    <tr><td>$d_r$</td><td>解耦 RoPE 维度</td><td>64</td></tr>
+    <tr><td>$C^{KV}$</td><td>MLA 的 KV 潜在向量</td><td>$\in \mathbb{R}^{L \times d_c}$</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §1 输入定义 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec1"><span class="sec-num">§1</span> 输入定义</h2>
+
+<p>两种机制共享完全相同的输入：</p>
+
+<div class="formula">
+  $$X \in \mathbb{R}^{L \times d}$$
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §2 闪电索引器 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec2"><span class="sec-num">§2</span> 闪电索引器（Lightning Indexer）— DSA 核心独创阶段</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th class="col-mha">MHA</th>
+      <th class="col-dsa">DSA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>此阶段</strong></td>
+      <td class="col-mha"><strong>不存在。</strong> 直接对全量 $L$ 个 Token 计算注意力</td>
+      <td class="col-dsa">引入独立、极轻量的索引器，快速判断"哪些历史 Token 最相关"</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>2.1 生成低维索引 Query 和 Key</h3>
+
+<div class="formula-group">
+  <div class="formula-row"><strong>对当前 Token $t$：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$q_t^{\text{idx}} = x_t \, W^{Q_{\text{idx}}} \quad \in \mathbb{R}^{n_{\text{idx}} \times d_{\text{idx}}}$$
+  </div>
+  <div class="formula-row"><strong>对所有历史 Token $s \in \{1, \ldots, L\}$：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$k_s^{\text{idx}} = x_s \, W^{K_{\text{idx}}} \quad \in \mathbb{R}^{n_{\text{idx}} \times d_{\text{idx}}}$$
+  </div>
+  <div class="formula-note">
+    其中 $W^{Q_{\text{idx}}} \in \mathbb{R}^{d \times (n_{\text{idx}} \cdot d_{\text{idx}})}$，$W^{K_{\text{idx}}}$ 同理。
+    $n_{\text{idx}}$ 和 $d_{\text{idx}}$ 都极小（如 $4 \times 64 = 256$ 维），且使用 <strong>FP8 精度</strong>计算——索引器的参数量和计算量仅占主注意力的 $&lt; 1\%$。
+  </div>
+</div>
+
+<h3>2.2 计算索引分数（ReLU 替代 Softmax）</h3>
+
+<div class="formula-boxed">
+  $$I_{t,s} = \sum_{j=1}^{n_{\text{idx}}} \text{ReLU}\!\left(q_{t,j}^{\text{idx}} \cdot (k_{s,j}^{\text{idx}})^\top\right) \cdot w_{t,j}$$
+  <span class="formula-label">闪电索引器核心公式</span>
+</div>
+
+<p>其中：</p>
+<ul>
+  <li>$q_{t,j}^{\text{idx}} \in \mathbb{R}^{1 \times d_{\text{idx}}}$ — 第 $j$ 个索引头的 Query</li>
+  <li>$k_{s,j}^{\text{idx}} \in \mathbb{R}^{1 \times d_{\text{idx}}}$ — 第 $j$ 个索引头的 Key</li>
+  <li>$w_{t,j} \in \mathbb{R}$ — 可学习的头权重（动态 Gating）</li>
+</ul>
+
+<div class="star-box">
+  <div class="star-title">为什么用 ReLU 而不用 Softmax？</div>
+  <table>
+    <thead>
+      <tr><th>对比维度</th><th>Softmax</th><th>ReLU</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>依赖性</strong></td>
+        <td>需要全局分母 $\sum_s \exp(I_{t,s})$，必须看完所有 $L$ 个 Token 才能归一化</td>
+        <td>每对 $(t, s)$ 独立计算，无全局依赖</td>
+      </tr>
+      <tr>
+        <td><strong>并行性</strong></td>
+        <td>难以流水线化，全局归一化形成同步点</td>
+        <td><strong>完美适配 GPU 并行</strong>——每个 CUDA 线程独立处理一对</td>
+      </tr>
+      <tr>
+        <td><strong>排序友好</strong></td>
+        <td>归一化后仍需排序选 Top-$k$</td>
+        <td>直接比较 ReLU 输出值，支持 <strong>Partial Sort</strong>（$O(L \log k)$）</td>
+      </tr>
+      <tr>
+        <td><strong>稀疏性</strong></td>
+        <td>所有分数 $&gt; 0$（指数函数恒正）</td>
+        <td>ReLU 天然产生 $0$ 值，<strong>自动过滤无关 Token</strong></td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="margin-top:12px;">数学上：</p>
+  <div style="text-align:center;">
+    $$\text{Softmax}: \; p_{t,s} = \frac{\exp(z_{t,s})}{\sum_{s'=1}^{L} \exp(z_{t,s'})} \quad \text{← 全局归一化，} O(L) \text{ 依赖}$$
+  </div>
+  <div style="text-align:center;">
+    $$\text{ReLU}: \; I_{t,s} = \max(0, z_{t,s}) \quad \text{← 逐元素，完全独立}$$
+  </div>
+</div>
+
+<h3>2.3 索引器的计算复杂度</h3>
+
+<div class="formula-group">
+  <div class="formula-row"><strong>索引器 FLOPs（单 Query Token）：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Indexer FLOPs} = n_{\text{idx}} \times d_{\text{idx}} \times L = 4 \times 64 \times L = 256L$$
+  </div>
+  <div class="formula-row"><strong>主注意力 FLOPs：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$\text{MHA FLOPs} = n_h \times d_h \times L = 128 \times 128 \times L = 16384L$$
+  </div>
+  <div class="formula-note">
+    <strong>索引器计算量占主注意力的比例</strong>：$256L / 16384L = 1.56\%$<br>
+    再加上 FP8 精度（相比 FP16 吞吐翻倍），索引器的实际耗时 $&lt; 1\%$——几乎"免费"。
+  </div>
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §3 Token 稀疏路由 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec3"><span class="sec-num">§3</span> Token 稀疏路由</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th class="col-mha">MHA</th>
+      <th class="col-dsa">DSA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>路由策略</strong></td>
+      <td class="col-mha"><strong>无路由。</strong> 强制与全量 $L$ 个历史 Token 交互</td>
+      <td class="col-dsa">根据 $I_{t,s}$ 选出得分最高的 $k$ 个 Token</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="formula-boxed">
+  $$S_t = \left\{ s \;\middle|\; I_{t,s} \in \text{Top-}k\!\left(\{I_{t,1}, I_{t,2}, \ldots, I_{t,L}\}\right) \right\}, \qquad |S_t| = k$$
+  <span class="formula-label">动态稀疏路由</span>
+</div>
+
+<div class="callout callout-blue">
+  <strong>动态性：</strong>对于每一个不同的 Query Token $t$，$S_t$ 是不同的——这就是"Dynamic"的含义。不同的问题关注不同的上下文！
+</div>
+
+<h3>3.1 工程实现</h3>
+<pre># indexer_scores: [B, L]  — 每个历史 Token 的相关性分数
+# k: int = 2048
+top_k_scores, top_k_indices = torch.topk(indexer_scores, k=k, dim=-1)
+# top_k_indices: [B, k]  — 被选中的 Token 位置索引
+# 复杂度: O(L log k)（Partial Sort，而非全排序 O(L log L)）</pre>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §4 主注意力 K、V 投影 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec4"><span class="sec-num">§4</span> 主注意力 K、V 投影</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th>阶段</th>
+      <th class="col-mha">MHA：每个头独立投影</th>
+      <th class="col-dsa">DSA：继承 MLA 极致压缩</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>K 投影</strong></td>
+      <td class="col-mha">$K_i = X \, W_i^K \in \mathbb{R}^{L \times d_h}$</td>
+      <td class="col-dsa" rowspan="2" style="vertical-align:middle;">
+        <span class="text-purple">$C^{KV} = X \, W^{DKV} \in \mathbb{R}^{L \times d_c}$</span><br>
+        所有 $n_h$ 个头共享同一个 $d_c$ 维潜在向量
+      </td>
+    </tr>
+    <tr>
+      <td><strong>V 投影</strong></td>
+      <td class="col-mha">$V_i = X \, W_i^V \in \mathbb{R}^{L \times d_h}$</td>
+    </tr>
+    <tr>
+      <td><strong>参数量</strong></td>
+      <td class="col-mha">$n_h \times d \times d_h \times 2$</td>
+      <td class="col-dsa">$d \times d_c$（大幅减少）</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-purple">
+  <strong>核心洞察：</strong>DSA 的底层不是 MHA，而是 <strong>MLA</strong>。这是"双剑合璧"的<strong>第一剑——特征维度压缩</strong>。
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §5 Attention 计算（Prefill） -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec5"><span class="sec-num">§5</span> Attention 计算（Prefill 阶段）</h2>
+
+<h3>MHA：全量稠密计算 $O(L^2)$</h3>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$S_{t,s} = \text{softmax}\!\left(\frac{Q_t \, K_s^\top}{\sqrt{d_h}}\right), \qquad s = 1, \ldots, L$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$O_t = \sum_{s=1}^{L} S_{t,s} \, V_s$$
+  </div>
+</div>
+
+<h3>DSA：仅在 Top-$k$ 集合上执行 MLA 计算</h3>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$S_{t,s} = \text{softmax}\!\left(\frac{\hat{Q}_t \, \hat{K}_s^\top}{\sqrt{d_h + d_r}}\right), \qquad \color{red}{s \in S_t \text{ only}}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$O_t = \sum_{\color{red}{s \in S_t}} S_{t,s} \, V_s^C$$
+  </div>
+  <div class="formula-note">
+    <strong>单 Token FLOPs：</strong>$O(k \cdot d_h \cdot n_h) = O(k \cdot d)$（MHA 为 $O(L \cdot d)$）<br>
+    <strong>加上索引器：</strong>$O(L \cdot d_{\text{idx}} \cdot n_{\text{idx}}) + O(k \cdot d)$
+  </div>
+</div>
+
+<h3>5.1 复杂度对比</h3>
+
+<table>
+  <thead>
+    <tr><th></th><th>MHA</th><th>DSA</th><th>加速比</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>单 Token Attention</td>
+      <td>$O(L \cdot d)$</td>
+      <td>$O(L \cdot d_{\text{idx}}) + O(k \cdot d)$</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>整个序列 Prefill</td>
+      <td>$O(L^2 \cdot d)$</td>
+      <td>$O(L^2 \cdot d_{\text{idx}}) + O(L \cdot k \cdot d)$</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>$L = 128\text{K}, k = 2\text{K}$</td>
+      <td>$\propto L^2 = 1.64 \times 10^{10}$</td>
+      <td>$\propto L \cdot k = 2.62 \times 10^8$</td>
+      <td><strong>~62&times;</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-yellow">
+  <strong>注意：</strong>DSA 的索引器项 $O(L^2 \cdot d_{\text{idx}})$ 看似仍为 $O(L^2)$，但由于 $d_{\text{idx}} \ll d$（$64 \ll 5120$，差 80 倍），且用 FP8 精度计算，实际耗时远小于主注意力。真正的"重活"（$O(L \cdot k \cdot d)$）被压缩了 $L/k = 64$ 倍。
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §6 KV Cache -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec6"><span class="sec-num">§6</span> KV Cache 存储阶段</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th>组件</th>
+      <th class="col-mha">MHA</th>
+      <th class="col-dsa">DSA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>存储内容</strong></td>
+      <td class="col-mha">所有 $n_h$ 个头的完整 $K, V$：<br>Cache = $\{ K_i, V_i \}_{i=1}^{n_h}$</td>
+      <td class="col-dsa">
+        MLA 潜在向量 + RoPE Key + 索引器 Key：<br>
+        Cache = $\{$<span class="text-purple">$C^{KV}$</span>, $K^{\text{RoPE}}$, <span class="text-blue">$k^{\text{idx}}$</span>$\}$
+      </td>
+    </tr>
+    <tr>
+      <td><strong>每层每 Token 维度</strong></td>
+      <td class="col-mha">$2 \times n_h \times d_h = 2d$<br>如 $2 \times 128 \times 128 = $ <strong>32768 维</strong></td>
+      <td class="col-dsa">$d_c + d_r + n_{\text{idx}} \times d_{\text{idx}}$<br>如 $512 + 64 + 4 \times 64 = $ <strong>832 维</strong></td>
+    </tr>
+    <tr>
+      <td><strong>FP16 字节/Token</strong></td>
+      <td class="col-mha">65,536 B</td>
+      <td class="col-dsa">1,664 B</td>
+    </tr>
+    <tr>
+      <td><strong>压缩比</strong></td>
+      <td class="col-mha">—</td>
+      <td class="col-dsa"><strong>$\approx 39.4\times$</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>6.1 Cache 详细构成</h3>
+
+<table>
+  <thead>
+    <tr><th>组件</th><th>MHA</th><th>DSA</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>K Cache</td><td>$n_h \times d_h \times L$</td><td>—</td></tr>
+    <tr><td>V Cache</td><td>$n_h \times d_h \times L$</td><td>—</td></tr>
+    <tr><td>$C^{KV}$</td><td>—</td><td>$d_c \times L$</td></tr>
+    <tr><td>$K^{\text{RoPE}}$</td><td>—</td><td>$d_r \times L$</td></tr>
+    <tr><td>$k^{\text{idx}}$</td><td>—</td><td>$n_{\text{idx}} \times d_{\text{idx}} \times L$</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §7 Decode -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec7"><span class="sec-num">§7</span> 推理 / Decode 阶段</h2>
+
+<p>Decode 是 DSA 解决超长文本推理的核心环节。每一步仅输入一个新 Token $x_t \in \mathbb{R}^{1 \times d}$。</p>
+
+<!-- 7.1 -->
+<h3>7.1 索引器全局粗筛</h3>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th class="col-mha">MHA</th>
+      <th class="col-dsa">DSA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>操作</strong></td>
+      <td class="col-mha"><strong>跳过</strong>——直接进入全量 Attention</td>
+      <td class="col-dsa">FP8 精度，让 $q_t^{\text{idx}}$ 扫过全量 $k^{\text{idx}}$，计算 $I_{t,s}$ 并得到 $S_t$</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$I_{t,s} = \sum_{j=1}^{n_{\text{idx}}} \text{ReLU}\!\left(q_{t,j}^{\text{idx}} \cdot (k_{s,j}^{\text{idx}})^\top\right) \cdot w_{t,j}, \qquad s = 1, \ldots, L$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$S_t = \text{Top-}k\!\left(\{I_{t,1}, \ldots, I_{t,L}\}\right)$$
+  </div>
+  <div class="formula-note">
+    <strong>粗筛 FLOPs</strong>：$n_{\text{idx}} \times d_{\text{idx}} \times L = 256L$<br>
+    <strong>粗筛读取量</strong>（FP8）：$256L$ bytes<br>
+    以 $L = 128\text{K}$：$256 \times 131072 = 33.5$ MB（FP8）<br>
+    而 MHA 读取 KV Cache：$32768 \times 131072 \times 2 = 8$ GB（FP16）<br>
+    → <strong>粗筛仅用 MHA Cache 读取量的 0.4%！</strong>
+  </div>
+</div>
+
+<!-- 7.2 -->
+<h3>7.2 Cache 精确拉取（Gather）— 双剑合璧的关键</h3>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th class="col-mha">MHA</th>
+      <th class="col-dsa">DSA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>读取范围</strong></td>
+      <td class="col-mha">全量读取庞大的历史 KV</td>
+      <td class="col-dsa">仅拉取被选中的 Top-$k$ 个 Token 的潜在向量</td>
+    </tr>
+    <tr>
+      <td><strong>读取对象</strong></td>
+      <td class="col-mha">$K_i^{\text{cached}} \in \mathbb{R}^{L \times d_h}$<br>$V_i^{\text{cached}} \in \mathbb{R}^{L \times d_h}$</td>
+      <td class="col-dsa"><span class="text-purple">$C^{KV}[S_t] \in \mathbb{R}^{k \times d_c}$</span><br>$K^{\text{RoPE}}[S_t] \in \mathbb{R}^{k \times d_r}$</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="key-box">
+  <div class="key-title">⚡ 双剑合璧：序列压缩 × 特征压缩</div>
+  <table>
+    <thead>
+      <tr><th>维度</th><th>MHA</th><th>DSA (MLA + Sparse)</th><th>压缩比</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>序列维度</strong></td>
+        <td>$L$（全量）</td>
+        <td>$k$（稀疏选择）</td>
+        <td>$L / k$</td>
+      </tr>
+      <tr>
+        <td><strong>特征维度</strong></td>
+        <td>$2 \times n_h \times d_h = 32768$</td>
+        <td>$d_c + d_r = 576$</td>
+        <td>$56.9\times$</td>
+      </tr>
+      <tr>
+        <td><strong>总读取量</strong></td>
+        <td>$32768 \times L$</td>
+        <td>$576 \times k$</td>
+        <td>$\frac{32768 \times L}{576 \times k}$</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:14px;">以 $L = 128\text{K}, k = 2048$ 为例：</p>
+
+  <div class="formula-group" style="margin-top:8px;">
+    <div class="formula-row" style="text-align:center;">
+      $$\text{MHA 读取量} = 32768 \times 131072 \times 2 \;\text{B} \approx 8.0 \;\text{GB}$$
+    </div>
+    <div class="formula-row" style="text-align:center;">
+      $$\text{DSA 读取量} = 576 \times 2048 \times 2 \;\text{B} \approx 2.3 \;\text{MB}$$
+    </div>
+  </div>
+
+  <div class="formula-boxed" style="margin-top:14px;">
+    $$\boxed{\text{压缩比} = \frac{8.0 \;\text{GB}}{2.3 \;\text{MB}} \approx 3{,}640\times}$$
+    <span class="formula-label">序列压缩 64× (128K/2K) × 特征压缩 57× (MLA) = 3640×</span>
+  </div>
+
+  <p style="margin-top:10px;"><strong>一次 Decode 步骤的 Cache 读取量从 8 GB 骤降至 2.3 MB</strong>——这就是"乘法级别的指数级下降"。</p>
+</div>
+
+<!-- 7.3 -->
+<h3>7.3 矩阵吸收与稀疏 Attention</h3>
+
+<h4>MHA：在全量长度 $L$ 上计算</h4>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Score}_{t} = q_t \cdot (\hat{K}^{\text{cached}})^\top \in \mathbb{R}^{1 \times L}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$o_t = \text{softmax}(\text{Score}_t) \cdot V^{\text{cached}} \in \mathbb{R}^{1 \times d_h}$$
+  </div>
+</div>
+
+<h4>DSA：继承 MLA 矩阵吸收，且仅在长度 $k$ 上计算</h4>
+
+<div class="formula-group">
+  <div class="formula-row"><strong>Step 1: Q 吸收</strong>（将 $W^{UK}$ 融合进 Query）</div>
+  <div class="formula-row" style="text-align:center;">
+    $$\tilde{q}_t^C = q_t^C \cdot (W_i^{UK})^\top \in \mathbb{R}^{1 \times d_c}$$
+  </div>
+
+  <div class="formula-row"><strong>Step 2: 在潜在空间做稀疏点积</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Score}_t = \underbrace{\tilde{q}_t^C \cdot (C^{KV}[S_t])^\top}_{\text{潜空间语义}} + \underbrace{q_t^R \cdot (K^{\text{RoPE}}[S_t])^\top}_{\text{位置信息}} \quad \in \mathbb{R}^{1 \times k}$$
+  </div>
+
+  <div class="formula-row"><strong>Step 3: V 吸收</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$u_t = \text{softmax}(\text{Score}_t) \cdot C^{KV}[S_t] \in \mathbb{R}^{1 \times d_c}$$
+  </div>
+
+  <div class="formula-row"><strong>Step 4: O 吸收</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$o_t = u_t \cdot W_i^{UV\_O} \in \mathbb{R}^{1 \times d}$$
+  </div>
+
+  <div class="formula-note">
+    整个 Decode 过程中，模型只需要读取 $C^{KV}[S_t] \in \mathbb{R}^{k \times d_c}$——这是一个 $2048 \times 512$ 的小矩阵，约 2 MB。<strong>永远不解压 Cache！</strong>
+  </div>
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §8 Decode 复杂度对比 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec8"><span class="sec-num">§8</span> 单步 Decode 复杂度对比</h2>
+
+<table>
+  <thead>
+    <tr><th>阶段</th><th>MHA</th><th>DSA</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>索引器粗筛</td><td>—</td><td>$O(L \cdot d_{\text{idx}} \cdot n_{\text{idx}})$（FP8，极小）</td></tr>
+    <tr><td>Top-$k$ 选择</td><td>—</td><td>$O(L \log k)$</td></tr>
+    <tr><td>Cache 读取</td><td>$O(L \cdot n_h \cdot d_h)$</td><td>$O(k \cdot d_c)$</td></tr>
+    <tr><td>Attention 计算</td><td>$O(L \cdot d)$</td><td>$O(k \cdot d)$</td></tr>
+    <tr><td><strong>总计</strong></td><td>$O(L \cdot d)$</td><td>$O(L \cdot d_{\text{idx}}) + O(k \cdot d)$</td></tr>
+    <tr><td><strong>瓶颈类型</strong></td><td>Memory Bandwidth Bound</td><td><strong>索引器 Bound</strong>（极小）+ Compute Bound</td></tr>
+  </tbody>
+</table>
+
+<h3>8.1 随序列长度的扩展性</h3>
+
+<table>
+  <thead>
+    <tr><th>$L$</th><th>MHA Decode 延迟</th><th>DSA Decode 延迟</th><th>加速比</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>4K</td><td>基准</td><td>~基准（$k$ 接近 $L$）</td><td>~1&times;</td></tr>
+    <tr><td>32K</td><td>8&times; 基准</td><td>索引器 8&times;，主注意力不变</td><td>~4&times;</td></tr>
+    <tr><td>128K</td><td>32&times; 基准</td><td>索引器 32&times;，主注意力不变</td><td><strong>~16&times;</strong></td></tr>
+    <tr><td>1M</td><td>256&times; 基准</td><td>索引器 256&times;，主注意力不变</td><td><strong>~100&times;</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-green">
+  <strong>关键洞察：</strong>MHA 的 Decode 延迟<strong>随序列长度线性增长</strong>（因为必须读取全量 Cache）。DSA 的主注意力计算<strong>恒定</strong>（$k$ 是常数），只有索引器的 FP8 粗筛随 $L$ 线性增长——但这部分代价极小。因此 DSA 在<strong>超长文本（128K+）场景下呈现断崖式加速</strong>。
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §9 三大工程奇迹 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec9"><span class="sec-num">§9</span> DSA 的三大工程奇迹</h2>
+
+<!-- 9.1 -->
+<h3>9.1 分离"寻找"与"计算"（Two-Stage Pipeline）</h3>
+
+<p>传统注意力是"边计算边寻找"——Softmax 在全量 $L$ 上既做归一化又做加权求和，算力与内存 IO 高度耦合。DSA 将其拆解为两个松耦合阶段：</p>
+
+<div class="diagram">Stage 1: Lightning Indexer  ──→  <strong>WHERE</strong> (在哪里)
+          极轻量 / FP8 / ReLU / 独立并行
+
+Stage 2: MLA Attention      ──→  <strong>WHAT</strong> (算什么)
+          厚重精确 / FP16 / Softmax / 仅在 Top-k 上</div>
+
+<div class="callout callout-teal">
+  <strong>流水线优势：</strong>Stage 1 可以在一个 GPU Stream 上异步执行，与 Stage 2 形成流水线，进一步隐藏延迟。
+</div>
+
+<!-- 9.2 -->
+<h3>9.2 ReLU 替代 Softmax 带来的极致吞吐</h3>
+
+<ol>
+  <li><strong>无全局依赖</strong>：每对 $(t, s)$ 的分数独立计算，不需要等全局分母</li>
+  <li><strong>天然稀疏</strong>：负值直接归零，自动过滤大量无关 Token</li>
+  <li><strong>Partial Sort 友好</strong>：只需找出最大的 $k$ 个值，无需全局排序</li>
+</ol>
+
+<!-- 9.3 -->
+<h3>9.3 "特征压缩" × "序列压缩"的双剑合璧</h3>
+
+<table>
+  <thead>
+    <tr><th>压缩维度</th><th>技术</th><th>压缩比</th><th>数学表达</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>特征维度</strong></td>
+      <td>MLA（潜在空间）</td>
+      <td>~57×</td>
+      <td>$C^{KV} \in \mathbb{R}^{d_c}$ vs $K, V \in \mathbb{R}^{n_h d_h}$</td>
+    </tr>
+    <tr>
+      <td><strong>序列维度</strong></td>
+      <td>DSA（Top-$k$ 路由）</td>
+      <td>$L / k$（如 64×）</td>
+      <td>$S_t$ 仅选 $k$ 个 Token</td>
+    </tr>
+    <tr>
+      <td><strong>总计</strong></td>
+      <td>DSA + MLA</td>
+      <td><strong>~3640×</strong></td>
+      <td>$576k$ vs $32768L$</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-purple">
+  <strong>类比：</strong>MLA 是"把每本书从 500 页压缩成 8 页摘要"；DSA 是"从 10 万本书中挑出 2000 本最相关的"。双剑合璧后，你从"阅读 10 万本 × 500 页"变成了"阅读 2000 本 × 8 页"——信息获取效率提升了几个数量级。
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §10 伪代码 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec10"><span class="sec-num">§10</span> DSA Decode 完整计算流（伪代码）</h2>
+
+<pre><span style="color:#64748b"># ─── 模型加载时（预计算 MLA 融合权重） ───</span>
+for each head i:
+    W_QK_absorbed[i] = W_UQ[i].T @ W_UK[i].T   <span style="color:#64748b"># Q 吸收 K 的解压矩阵</span>
+    W_UVO[i]         = W_UV[i] @ W_O[i]         <span style="color:#64748b"># V+O 融合权重</span>
+
+<span style="color:#64748b"># ─── 每步 Decode ───</span>
+def dsa_decode_step(x_t, cache_C_KV, cache_K_rope, cache_k_idx):
+    """
+    x_t:          [1, d]           当前 token 隐状态
+    cache_C_KV:   [L, d_c]         MLA 潜在向量 Cache (512 维)
+    cache_K_rope: [L, d_r]         解耦 RoPE Key Cache (64 维)
+    cache_k_idx:  [L, n_idx*d_idx] 索引器 Key Cache (256 维, FP8)
+    """
+    <span style="color:#64748b"># ══════ Stage 1: Lightning Indexer (FP8, 极快) ══════</span>
+    q_idx = fp8(x_t @ W_Q_idx)                    <span style="color:#64748b"># [1, n_idx * d_idx]</span>
+
+    <span style="color:#64748b"># 全局粗筛：与所有 L 个历史 Token 的索引 Key 做点积</span>
+    scores_idx = relu_weighted_dot(q_idx, cache_k_idx)  <span style="color:#64748b"># [1, L]</span>
+
+    <span style="color:#64748b"># Top-k 选择</span>
+    _, S_t = torch.topk(scores_idx, k=k, dim=-1)  <span style="color:#64748b"># [1, k] 索引集合</span>
+
+    <span style="color:#64748b"># ══════ Stage 2: Sparse MLA Attention (FP16, 精确) ══════</span>
+    <span style="color:#64748b"># Gather: 仅拉取被选中 Token 的 Cache (极小 IO)</span>
+    C_selected = cache_C_KV[S_t]                   <span style="color:#64748b"># [k, d_c]   ← 2048 × 512</span>
+    K_rope_sel = cache_K_rope[S_t]                 <span style="color:#64748b"># [k, d_r]   ← 2048 × 64</span>
+
+    <span style="color:#64748b"># Query 路径</span>
+    c_q = x_t @ W_DQ                              <span style="color:#64748b"># [1, d_c']</span>
+    q_rope = RoPE(x_t @ W_QR)                     <span style="color:#64748b"># [1, d_r]</span>
+
+    for each head i:
+        <span style="color:#64748b"># Q 吸收</span>
+        q_semantic = c_q @ W_QK_absorbed[i]        <span style="color:#64748b"># [1, d_c]</span>
+
+        <span style="color:#64748b"># 稀疏 Attention Score (仅在 k 个 Token 上)</span>
+        score_sem = q_semantic @ C_selected.T      <span style="color:#64748b"># [1, k]  ← 不是 [1, L]!</span>
+        score_pos = q_rope @ K_rope_sel.T          <span style="color:#64748b"># [1, k]</span>
+        score = (score_sem + score_pos) / sqrt(d_h + d_r)
+
+        <span style="color:#64748b"># V 吸收</span>
+        alpha = softmax(score)                     <span style="color:#64748b"># [1, k]</span>
+        u_i = alpha @ C_selected                   <span style="color:#64748b"># [1, d_c]</span>
+
+        <span style="color:#64748b"># V+O 吸收</span>
+        output_i = u_i @ W_UVO[i]                  <span style="color:#64748b"># [1, d]</span>
+
+    output = sum(output_i for all heads)
+    return output</pre>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §11 全局因果链 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec11"><span class="sec-num">§11</span> 全局因果链</h2>
+
+<div class="diagram"><strong>传统 MHA:</strong>
+
+    x_t ──→ [Q投影] ──→ [全量 L 个 KV Cache 读取] ──→ [O(L) Attention] ──→ output
+                              ↑
+                        8 GB HBM IO (128K)
+                       Memory Bandwidth Bound
+
+
+<strong>DSA (闪电索引 + 稀疏 MLA):</strong>
+
+    x_t ──→ [Q_idx 投影] ──→ [全量粗筛: FP8, 33 MB] ──→ [Top-k 选择]
+                                                              │
+                                ┌─────────────────────────────┘
+                                ▼
+              [Gather: 仅拉取 Top-k 的 C^{KV}, 2.3 MB]
+                                │
+                                ▼
+              [Q 吸收] ──→ [O(k) 稀疏 Attention] ──→ [V+O 吸收] ──→ output
+                                │
+                         仅在 2048 个 Token × 512 维上计算
+                              恒定开销，不随 L 增长</div>
+
+<div class="callout callout-green">
+  <strong>一句话总结：</strong>DSA 让 LLM 在百万级上下文中，像人类一样"<strong>先翻目录，再精读</strong>"——而不是从第一页读到最后一页。
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- §12 注意力演进 -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="sec12"><span class="sec-num">§12</span> 注意力机制演进中的位置</h2>
+
+<div class="formula" style="text-align:center;">
+  $$\underbrace{\text{MHA}}_{\text{全量 KV, 全量序列}} \xrightarrow{\text{KV 头裁撤}} \underbrace{\text{GQA}}_{\text{分组 KV, 全量序列}} \xrightarrow{\text{特征压缩}} \underbrace{\text{MLA}}_{\text{潜在 KV, 全量序列}} \xrightarrow{\text{序列压缩}} \underbrace{\text{DSA}}_{\text{潜在 KV, 稀疏序列}}$$
+</div>
+
+<table>
+  <thead>
+    <tr><th>方案</th><th>特征压缩</th><th>序列压缩</th><th>Cache 大小 (128K)</th><th>代表模型</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>MHA</strong></td><td>&cross;</td><td>&cross;</td><td>~8 GB/层</td><td>GPT-3</td></tr>
+    <tr><td><strong>GQA</strong></td><td>4&times;</td><td>&cross;</td><td>~2 GB/层</td><td>LLaMA-3</td></tr>
+    <tr><td><strong>MLA</strong></td><td>57&times;</td><td>&cross;</td><td>~140 MB/层</td><td>DeepSeek-V2/V3</td></tr>
+    <tr><td><strong>DSA</strong></td><td>57&times; (MLA)</td><td>64&times; ($L/k$)</td><td>~140 MB/层 + 索引开销</td><td>DeepSeek 下一代</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-yellow">
+  <strong>注意：</strong>DSA 的 Cache 总量与 MLA 相似（因为索引器 Key 需要全量存储），其核心优势体现在 <strong>Decode 时的读取量和计算量</strong>——只需读取并计算 Top-$k$ 个 Token 的 Cache。
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- References -->
+<!-- ════════════════════════════════════════════ -->
+<h2 id="refs"><span class="sec-num">Ref</span> 参考文献</h2>
+
+<ol style="font-size:13px; line-height:1.75;">
+  <li>DeepSeek-AI. <em>Native Sparse Attention: Hardware-Aligned and Natively Trainable Sparse Attention.</em> arXiv:2502.11089, 2025.</li>
+  <li>DeepSeek-AI. <em>DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model.</em> arXiv:2405.04434, 2024.</li>
+  <li>DeepSeek-AI. <em>DeepSeek-V3 Technical Report.</em> arXiv:2412.19437, 2024.</li>
+  <li>Vaswani, A. et al. <em>Attention Is All You Need.</em> NeurIPS 2017.</li>
+  <li>Kitaev, N. et al. <em>Reformer: The Efficient Transformer.</em> ICLR 2020.</li>
+  <li>Beltagy, I. et al. <em>Longformer: The Long-Document Transformer.</em> arXiv:2004.05150, 2020.</li>
+  <li>Child, R. et al. <em>Generating Long Sequences with Sparse Transformers.</em> arXiv:1904.10509, 2019.</li>
+</ol>
+
+</body>
+</html>

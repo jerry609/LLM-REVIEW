@@ -114,6 +114,9 @@
 | [`attention-evolution-and-inference.md`](notes/attention/attention-evolution-and-inference.md) | 注意力机制演进全景（MHA→MQA→GQA→MLA→SSM）+ 端到端推理流程 |
 | [`mha-vs-mla-full-derivation.md`](notes/attention/mha-vs-mla-full-derivation.md) | **MHA vs MLA 全流程对比**：三次矩阵吸收推导、Decode 阶段带宽分析、伪代码 |
 | [`mha-vs-gqa-full-derivation.md`](notes/attention/mha-vs-gqa-full-derivation.md) | **MHA vs GQA 全流程对比**：分组共享 KV、SRAM 复用、Roofline 分析、GQA vs MLA 哲学 |
+
+| [`mha-vs-dsa-full-derivation.md`](notes/attention/mha-vs-dsa-full-derivation.md) | **MHA vs DSA 全流程对比**：闪电索引器、ReLU 替代 Softmax、序列×特征双重压缩 3640× |
+| [`mha-vs-linear-attention-full-derivation.md`](notes/attention/mha-vs-linear-attention-full-derivation.md) | **MHA vs 线性注意力全流程对比**：结合律消除 $L^2$、RNN 等价、状态压缩瓶颈、前沿变体 |
 | [`flashattention.md`](notes/attention/flashattention.md) | FlashAttention 原理与实现细节 |
 | [`linear-attention.md`](notes/attention/linear-attention.md) | 线性注意力机制（Mamba、RWKV） |
 | [`long-context.md`](notes/attention/long-context.md) | 长上下文处理技术 |
@@ -220,6 +223,8 @@
 | [`attention-evolution-and-inference.html`](notebooks/attention-evolution-and-inference.html) | 注意力机制演进（MHA/MQA/GQA/MLA）+ 现代推理引擎优化全景 |
 | [`mha-vs-mla-full-derivation.html`](notebooks/mha-vs-mla-full-derivation.html) | **MHA vs MLA 全流程对比**：三次矩阵吸收推导 + Decode 伪代码 |
 | [`mha-vs-gqa-full-derivation.html`](notebooks/mha-vs-gqa-full-derivation.html) | **MHA vs GQA 全流程对比**：分组共享 + SRAM 复用 + Roofline 性能分析 |
+| [`mha-vs-dsa-full-derivation.html`](notebooks/mha-vs-dsa-full-derivation.html) | **MHA vs DSA 全流程对比**：闪电索引器 + 稀疏 MLA + 3640× 带宽压缩 |
+| [`mha-vs-linear-attention-full-derivation.html`](notebooks/mha-vs-linear-attention-full-derivation.html) | **MHA vs 线性注意力全流程对比**：结合律 + RNN 等价 + 恒定 Cache |
 | [`kv_cache_pipeline.html`](notebooks/kv_cache_pipeline.html) | KV Cache 压缩流水线：H2O / StreamingLLM / SnapKV / Ada-KV / ACTA |
 
 ### Jupyter Notebook 实验
@@ -271,31 +276,33 @@ src/
 
 ## 🎯 `mock_interview/`：模拟面试题库
 
-> 按主题 / 公司 / 行为面试分类，含评分标准与追问链。
+> 系统性整理的技术深挖与系统设计题库，按维度分类，附评分维度与追问链。
 
 ### 按主题 [`mock_interview/by-topic/`](mock_interview/by-topic/)
 
 - **KV Cache 系统设计**（4 道）：驱逐策略深挖、压缩量化、Prefill-Decode-PagedAttention
-- **Serving 系统设计**（3 道）：100 QPS LLM 服务、长上下文、多租户
-- **前沿技术**（3 道）：推理模型对比、模型比较、长上下文方案
+- **Serving 系统设计**（3 道）：高并发 LLM 服务、长上下文、多租户隔离
+- **前沿技术**（3 道）：推理模型对比、架构演进、长上下文方案
 - **RAG 与成本优化**（2 道）
 
-### 按公司 [`mock_interview/by-company/`](mock_interview/by-company/)
+### 按风格 [`mock_interview/by-company/`](mock_interview/by-company/)
 
-| 文件 | 公司 |
-|------|------|
-| [`bytedance.md`](mock_interview/by-company/bytedance.md) | 字节跳动 |
-| [`alibaba.md`](mock_interview/by-company/alibaba.md) | 阿里巴巴 |
-| [`tencent.md`](mock_interview/by-company/tencent.md) | 腾讯 |
+> 不同团队的技术面试侧重点各异，此处按典型面试风格归类。
+
+| 文件 | 面试风格 |
+|------|----------|
+| [`bytedance.md`](mock_interview/by-company/bytedance.md) | 偏重工程落地与极致性能优化 |
+| [`alibaba.md`](mock_interview/by-company/alibaba.md) | 偏重大规模分布式系统设计 |
+| [`tencent.md`](mock_interview/by-company/tencent.md) | 偏重全链路架构与稳定性保障 |
 
 ### 行为面试 [`mock_interview/behavior/`](mock_interview/behavior/)
 
 | 文件 | 内容 |
 |------|------|
-| [`self-introduction.md`](mock_interview/behavior/self-introduction.md) | 自我介绍模板 |
-| [`star-stories.md`](mock_interview/behavior/star-stories.md) | STAR 故事库 |
-| [`star-kv-cache-serving.md`](mock_interview/behavior/star-kv-cache-serving.md) | KV Cache 项目 STAR 案例 |
-| [`project-one-pager.md`](mock_interview/behavior/project-one-pager.md) | 项目一页纸 |
+| [`self-introduction.md`](mock_interview/behavior/self-introduction.md) | 自我介绍框架与模板 |
+| [`star-stories.md`](mock_interview/behavior/star-stories.md) | STAR 方法论故事库 |
+| [`star-kv-cache-serving.md`](mock_interview/behavior/star-kv-cache-serving.md) | 推理系统项目 STAR 案例 |
+| [`project-one-pager.md`](mock_interview/behavior/project-one-pager.md) | 项目一页纸模板 |
 
 ---
 

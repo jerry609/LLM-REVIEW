@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>传统 MHA vs 线性注意力：全流程数学与矩阵推导对比</title>
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '$', right: '$', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --border: #d1d5db;
+    --code-bg: #f8f9fa;
+    --section-bg: #fafbfc;
+    --heading: #0f172a;
+    --muted: #64748b;
+    --red: #dc2626;
+    --green: #16a34a;
+    --orange: #ea580c;
+    --purple: #7c3aed;
+    --teal: #0d9488;
+    --yellow-bg: #fefce8;
+    --blue-bg: #eff6ff;
+    --green-bg: #f0fdf4;
+    --red-bg: #fef2f2;
+    --purple-bg: #faf5ff;
+    --teal-bg: #f0fdfa;
+    --font-serif: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-serif);
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.85;
+    font-size: 15px;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 28px 80px;
+  }
+
+  .paper-title {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--heading);
+    text-align: center;
+    margin-bottom: 10px;
+    letter-spacing: -0.2px;
+    line-height: 1.35;
+  }
+  .paper-subtitle {
+    text-align: center;
+    color: var(--heading);
+    font-size: 15px;
+    font-style: italic;
+    margin-bottom: 28px;
+    font-family: var(--font-serif);
+  }
+
+  h2 {
+    font-family: var(--font-serif);
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--heading);
+    margin: 38px 0 14px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2 .sec-num {
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  h3 {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--heading);
+    margin: 22px 0 8px;
+  }
+  h4 {
+    font-family: var(--font-sans);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--purple);
+    margin: 16px 0 6px;
+  }
+
+  p { margin: 8px 0; text-align: justify; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 12px 0;
+    white-space: pre;
+    color: #1e293b;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent);
+  }
+
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 14px 0;
+    white-space: pre;
+  }
+
+  .formula {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .formula-label {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    margin-top: 6px;
+  }
+  .formula-group {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    overflow-x: auto;
+  }
+  .formula-row { margin: 4px 0; }
+  .formula-note {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.65;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+  }
+  .formula-boxed {
+    background: var(--yellow-bg);
+    border: 2px solid var(--orange);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+
+  .katex { font-size: 1.05em; }
+  .formula .katex { font-size: 1.15em; }
+  .formula-boxed .katex { font-size: 1.15em; }
+  .formula-group .katex { font-size: 1.1em; }
+  .katex-display { margin: 0.5em 0; }
+
+  .callout {
+    border-left: 3px solid;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .callout-blue   { background: var(--blue-bg);   border-color: var(--accent); }
+  .callout-green  { background: var(--green-bg);  border-color: var(--green); }
+  .callout-red    { background: var(--red-bg);     border-color: var(--red); }
+  .callout-yellow { background: var(--yellow-bg);  border-color: var(--orange); }
+  .callout-purple { background: var(--purple-bg);  border-color: var(--purple); }
+  .callout-teal   { background: var(--teal-bg);   border-color: var(--teal); }
+  .callout strong { font-weight: 600; }
+
+  .theorem-box {
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    margin: 16px 0;
+    background: var(--blue-bg);
+    border-radius: 0 4px 4px 0;
+  }
+  .theorem-box .theorem-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+  .key-box {
+    border: 2px solid var(--purple);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    background: var(--purple-bg);
+  }
+  .key-box .key-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--purple);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+  .star-box {
+    border: 2px solid var(--teal);
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin: 16px 0;
+    background: var(--teal-bg);
+  }
+  .star-box .star-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--teal);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13.5px;
+    font-family: var(--font-sans);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: var(--section-bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--heading);
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  .compare-table th:first-child { width: 20%; }
+  .compare-table .col-mha { background: #eff6ff; }
+  .compare-table .col-lin { background: #f0fdf4; }
+  .compare-table th.col-mha { background: var(--accent); color: #fff; }
+  .compare-table th.col-lin { background: var(--green); color: #fff; }
+
+  ul, ol { margin: 8px 0 8px 24px; }
+  li { margin: 4px 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  .abstract {
+    background: var(--section-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin: 0 0 28px;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  .abstract-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+
+  .toc {
+    background: var(--section-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 22px;
+    margin: 0 0 28px;
+    font-size: 13.5px;
+  }
+  .toc-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--heading);
+    margin-bottom: 8px;
+    font-family: var(--font-sans);
+  }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ul { margin: 4px 0 4px 20px; list-style: none; }
+  .toc ul li::before { content: "·"; color: var(--muted); margin-right: 6px; }
+
+  mark { background: #fef08a; padding: 1px 4px; border-radius: 2px; }
+  .text-red { color: var(--red); font-weight: 600; }
+  .text-green { color: var(--green); font-weight: 600; }
+  .text-purple { color: var(--purple); font-weight: 600; }
+  .text-blue { color: var(--accent); font-weight: 600; }
+  .text-teal { color: var(--teal); font-weight: 600; }
+  .text-orange { color: var(--orange); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ TITLE ════════════════ -->
+<div class="paper-title">传统 MHA vs 线性注意力：全流程数学与矩阵推导对比</div>
+<div class="paper-subtitle">Multi-Head Attention vs Linear Attention — Full-Process Mathematical Derivation</div>
+
+<!-- ════════ Abstract ════════ -->
+<div class="abstract">
+  <div class="abstract-title">Abstract</div>
+  本文以严格的数学形式，完整推导 Multi-Head Attention (MHA) 与 Linear Attention 在 Prefill 和 Decode 两个阶段的每一步计算。线性注意力的核心洞察在于：用特征映射函数 $\phi(\cdot)$ 替代 Softmax 的非线性枷锁后，利用<strong>矩阵乘法结合律</strong>，将 $\text{Softmax}(QK^\top)V$ 的 $O(L^2)$ 计算重新排列为 $\phi(Q)(\phi(K)^\top V)$ 的 $O(L \cdot d_h^2)$ 计算——彻底消除 $L \times L$ 的注意力矩阵。在 Decode 阶段，线性注意力进一步退化为一个<strong>恒定大小的状态机（RNN）</strong>，实现 $O(1)$ 的单步推理。
+</div>
+
+<!-- ════════ TOC ════════ -->
+<div class="toc">
+  <div class="toc-title">目录 · Table of Contents</div>
+  <ul>
+    <li><a href="#sec0">核心思想对比 &amp; 符号约定</a></li>
+    <li><a href="#sec1">§1 输入定义</a></li>
+    <li><a href="#sec2">§2 训练 / Prefill 阶段</a></li>
+    <li><a href="#sec3">§3 KV Cache 阶段</a></li>
+    <li><a href="#sec4">§4 推理 / Decode 阶段</a></li>
+    <li><a href="#sec5">§5 线性注意力 = Transformer 化身 RNN</a></li>
+    <li><a href="#sec6">§6 精度惩罚分析</a></li>
+    <li><a href="#sec7">§7 前沿发展与变体</a></li>
+    <li><a href="#sec8">§8 全局因果链</a></li>
+    <li><a href="#sec9">§9 注意力机制演进全景</a></li>
+    <li><a href="#refs">参考文献</a></li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- ════════════════ §0 核心思想 ════════════════ -->
+<h2 id="sec0"><span class="sec-num">§0</span> 核心思想对比</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th class="col-mha">MHA（全局稠密注意力）</th>
+      <th class="col-lin">线性注意力（Linear Attention）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>核心公式</strong></td>
+      <td class="col-mha">$\text{Softmax}(QK^\top)V$</td>
+      <td class="col-lin">$\phi(Q)\bigl(\phi(K)^\top V\bigr)$</td>
+    </tr>
+    <tr>
+      <td><strong>瓶颈</strong></td>
+      <td class="col-mha">Softmax 锁死 $Q$ 和 $K$，必须生成 $L \times L$ 矩阵</td>
+      <td class="col-lin">结合律打破锁定，中间矩阵仅 $d_h \times d_h$</td>
+    </tr>
+    <tr>
+      <td><strong>Prefill 复杂度</strong></td>
+      <td class="col-mha">$O(L^2 \cdot d_h)$</td>
+      <td class="col-lin">$O(L \cdot d_h^2)$</td>
+    </tr>
+    <tr>
+      <td><strong>Decode 复杂度</strong></td>
+      <td class="col-mha">$O(L \cdot d_h)$（每步，随 $L$ 增长）</td>
+      <td class="col-lin">$O(d_h^2)$（每步，<mark>恒定</mark>！）</td>
+    </tr>
+    <tr>
+      <td><strong>KV Cache</strong></td>
+      <td class="col-mha">随序列长度无限增长</td>
+      <td class="col-lin">固定大小 $S_t \in \mathbb{R}^{d_h \times d_h}$</td>
+    </tr>
+    <tr>
+      <td><strong>类比</strong></td>
+      <td class="col-mha">侦探每次翻遍<strong>所有笔记本</strong></td>
+      <td class="col-lin">侦探只维护一份<strong>不断更新的摘要</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>符号约定</h3>
+<table>
+  <thead><tr><th>符号</th><th>含义</th><th>典型值</th></tr></thead>
+  <tbody>
+    <tr><td>$L$</td><td>序列长度</td><td>128K+</td></tr>
+    <tr><td>$d$</td><td>模型隐藏维度</td><td>4096</td></tr>
+    <tr><td>$d_h$</td><td>每头维度</td><td>128</td></tr>
+    <tr><td>$n_h$</td><td>注意力头数</td><td>32</td></tr>
+    <tr><td>$\phi(\cdot)$</td><td>核特征映射函数</td><td>$\text{elu}(x)+1$、$\text{ReLU}(x)$</td></tr>
+    <tr><td>$S_t$</td><td>线性注意力的隐状态矩阵</td><td>$\in \mathbb{R}^{d_h \times d_h}$</td></tr>
+    <tr><td>$Z_t$</td><td>线性注意力的归一化因子向量</td><td>$\in \mathbb{R}^{d_h \times 1}$</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════ §1 输入 ════════════════ -->
+<h2 id="sec1"><span class="sec-num">§1</span> 输入定义</h2>
+
+<p>两种机制共享完全相同的输入：</p>
+<div class="formula">$$X \in \mathbb{R}^{L \times d}$$</div>
+
+<hr>
+
+<!-- ════════════════ §2 Prefill ════════════════ -->
+<h2 id="sec2"><span class="sec-num">§2</span> 训练 / Prefill 阶段</h2>
+
+<h3>2.1 Q、K、V 投影（两者完全相同）</h3>
+
+<div class="formula">
+  $$Q = X W^Q \in \mathbb{R}^{L \times d_h}, \quad K = X W^K \in \mathbb{R}^{L \times d_h}, \quad V = X W^V \in \mathbb{R}^{L \times d_h}$$
+</div>
+
+<h3>2.2 核函数映射（线性注意力独有）</h3>
+
+<table class="compare-table">
+  <thead>
+    <tr><th></th><th class="col-mha">MHA</th><th class="col-lin">线性注意力</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>操作</strong></td>
+      <td class="col-mha"><strong>无此步骤。</strong> 直接使用原始 $Q, K$</td>
+      <td class="col-lin">$\tilde{Q} = \phi(Q)$，$\tilde{K} = \phi(K)$<br>映射到<strong>正值域</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="star-box">
+  <div class="star-title">为什么要保证正值？常见 $\phi$ 选择</div>
+  <p>Softmax 输出天然非负（$\exp(\cdot) > 0$）且和为 1。线性注意力用 $\phi(\cdot)$ 替代后需手动确保非负性：</p>
+  <table>
+    <thead><tr><th>$\phi(x)$</th><th>优点</th><th>缺点</th></tr></thead>
+    <tbody>
+      <tr><td>$\text{elu}(x) + 1$</td><td>平滑，可导</td><td>计算略重</td></tr>
+      <tr><td>$\text{ReLU}(x)$</td><td>极简，天然稀疏</td><td>零值多，信息丢失</td></tr>
+      <tr><td>$1 + \text{elu}(x)$</td><td>保证下界为 1，数值稳定</td><td>—</td></tr>
+      <tr><td>$\exp(x)$</td><td>最接近 Softmax 行为</td><td>数值溢出风险</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>2.3 注意力矩阵计算（核心差异）</h3>
+
+<h4>MHA：必须先算 $L \times L$ 矩阵</h4>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$A = Q K^\top \in \mathbb{R}^{L \times L}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$S = \text{Softmax}(A / \sqrt{d_h}) \in \mathbb{R}^{L \times L}$$
+  </div>
+  <div class="formula-note">
+    <strong>问题所在：</strong>Softmax 要求<strong>先看到所有 $L$ 个 Key 的分数</strong>才能归一化。这把 $Q$ 和 $K^\top$ 锁死在一起，无法拆分。
+  </div>
+</div>
+
+<h4>线性注意力：利用结合律，先算 $d_h \times d_h$ 矩阵</h4>
+
+<div class="key-box">
+  <div class="key-title">结合律的魔法 — 线性注意力的核心推导</div>
+
+  <p>传统注意力（忽略 Softmax 归一化）的本质是：</p>
+  <div style="text-align:center;">
+    $$O = \underbrace{(\tilde{Q} \, \tilde{K}^\top)}_{L \times L} \; V$$
+  </div>
+
+  <p>矩阵乘法满足<strong>结合律</strong>，因此可以改变计算顺序：</p>
+  <div style="text-align:center;">
+    $$O = \tilde{Q} \; \underbrace{(\tilde{K}^\top \, V)}_{d_h \times d_h}$$
+  </div>
+
+  <p>定义<strong>全局隐状态矩阵</strong>：</p>
+  <div class="formula-boxed" style="margin:10px 0;">
+    $$S_{\text{global}} = \tilde{K}^\top V \in \mathbb{R}^{d_h \times d_h}$$
+    <span class="formula-label">全局隐状态：尺寸完全独立于序列长度 L</span>
+  </div>
+
+  <p><strong>关键洞察：</strong>$S_{\text{global}}$ 始终是 $d_h \times d_h = 128 \times 128$ 的固定矩阵，无论文本有多长。</p>
+</div>
+
+<h3>2.4 加权输出与归一化</h3>
+
+<h4>MHA</h4>
+<p>Softmax 自带归一化：</p>
+<div class="formula">$$O = S \, V \in \mathbb{R}^{L \times d_h}$$</div>
+
+<h4>线性注意力</h4>
+<p>需要手动归一化，模拟 Softmax 的"权重和为 1"约束：</p>
+
+<div class="formula-group">
+  <div class="formula-row"><strong>分子：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Numerator} = \tilde{Q} \, S_{\text{global}} = \tilde{Q} \, (\tilde{K}^\top V) \in \mathbb{R}^{L \times d_h}$$
+  </div>
+  <div class="formula-row"><strong>分母（归一化因子）：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$Z_{\text{global}} = \tilde{K}^\top \mathbf{1}_L \in \mathbb{R}^{d_h \times 1}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Denominator} = \tilde{Q} \, Z_{\text{global}} \in \mathbb{R}^{L \times 1}$$
+  </div>
+  <div class="formula-row"><strong>最终输出（逐行除法）：</strong></div>
+</div>
+
+<div class="formula-boxed">
+  $$O_i = \frac{\tilde{q}_i \, S_{\text{global}}}{\tilde{q}_i \, Z_{\text{global}}}, \qquad i = 1, \ldots, L$$
+  <span class="formula-label">线性注意力 Prefill 输出公式</span>
+</div>
+
+<h3>2.5 Prefill 复杂度对比</h3>
+
+<table>
+  <thead><tr><th></th><th>MHA</th><th>线性注意力</th></tr></thead>
+  <tbody>
+    <tr><td><strong>时间复杂度</strong></td><td>$O(L^2 \cdot d_h)$</td><td>$O(L \cdot d_h^2)$</td></tr>
+    <tr><td><strong>空间复杂度</strong></td><td>$O(L^2)$（注意力矩阵）</td><td>$O(L \cdot d_h)$（无 $L^2$ 矩阵）</td></tr>
+    <tr><td><strong>当 $L > d_h$ 时</strong></td><td>$L^2$ 主导，极度昂贵</td><td>$L \cdot d_h^2$ 更优</td></tr>
+    <tr><td><strong>交叉点</strong></td><td>—</td><td>当 $L = d_h$（如 128）时两者等价</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-blue">
+  <strong>直觉：</strong>$d_h$ 通常是 128。当 $L = 4096$ 时，MHA 需要计算 $4096^2 = 16\text{M}$ 个注意力分数；线性注意力只需维护一个 $128^2 = 16\text{K}$ 的状态矩阵——差了 <strong>1000 倍</strong>。
+</div>
+
+<hr>
+
+<!-- ════════════════ §3 KV Cache ════════════════ -->
+<h2 id="sec3"><span class="sec-num">§3</span> KV Cache 阶段 — 线性注意力最革命性的差异</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr><th></th><th class="col-mha">MHA：线性增长的 Cache</th><th class="col-lin">线性注意力：恒定大小的"隐状态"</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>存储内容</strong></td>
+      <td class="col-mha">每个 Token 的 K, V：<br>Cache = $\{K_1, V_1, \ldots, K_t, V_t\}$</td>
+      <td class="col-lin">累积后的隐状态矩阵 + 归一化向量：<br>Cache = $\{S_t, Z_t\}$</td>
+    </tr>
+    <tr>
+      <td><strong>数据维度</strong></td>
+      <td class="col-mha">$\text{Cache}_K \in \mathbb{R}^{t \times d_h}$<br>$\text{Cache}_V \in \mathbb{R}^{t \times d_h}$<br><span class="text-red">随 $t$ 无限增长！</span></td>
+      <td class="col-lin">$S_t \in \mathbb{R}^{d_h \times d_h}$<br>$Z_t \in \mathbb{R}^{d_h \times 1}$<br><span class="text-green">尺寸恒定！不随 $L$ 增长！</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Cache 大小对比</h3>
+
+<table>
+  <thead>
+    <tr><th>序列长度 $L$</th><th>MHA KV Cache（每层每头）</th><th>线性注意力 Cache</th><th>MHA / Linear</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>4K</td><td>$2 \times 4096 \times 128 = 1$M 维</td><td>$128^2 + 128 = 16.5$K 维</td><td><strong>63&times;</strong></td></tr>
+    <tr><td>32K</td><td>$2 \times 32768 \times 128 = 8.4$M 维</td><td>16.5K 维（不变）</td><td><strong>509&times;</strong></td></tr>
+    <tr><td>128K</td><td>$2 \times 131072 \times 128 = 33.6$M 维</td><td>16.5K 维（不变）</td><td><strong>2,036&times;</strong></td></tr>
+    <tr><td>1M</td><td>$2 \times 10^6 \times 128 = 256$M 维</td><td>16.5K 维（不变）</td><td><strong>15,515&times;</strong></td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ════════════════ §4 Decode ════════════════ -->
+<h2 id="sec4"><span class="sec-num">§4</span> 推理 / Decode 阶段</h2>
+
+<h3>4.1 计算新向量</h3>
+
+<table class="compare-table">
+  <thead><tr><th></th><th class="col-mha">MHA</th><th class="col-lin">线性注意力</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>投影</strong></td>
+      <td class="col-mha">$q_t = x_t W^Q$, $k_t = x_t W^K$, $v_t = x_t W^V$</td>
+      <td class="col-lin">$\tilde{q}_t = \phi(x_t W^Q)$, $\tilde{k}_t = \phi(x_t W^K)$, $v_t = x_t W^V$</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>4.2 Cache / 状态更新（核心差异）</h3>
+
+<h4>MHA：追加（Append）— Cache 变长</h4>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Cache}_K \leftarrow [\text{Cache}_K;\; k_t] \qquad (\text{长度从 } t{-}1 \text{ 变为 } t)$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Cache}_V \leftarrow [\text{Cache}_V;\; v_t]$$
+  </div>
+</div>
+
+<h4>线性注意力：累加（Accumulate）— 完美的 $O(1)$ 状态机</h4>
+
+<div class="formula-boxed">
+  $$S_t = S_{t-1} + \tilde{k}_t^\top \, v_t$$
+  $$Z_t = Z_{t-1} + \tilde{k}_t^\top$$
+  <span class="formula-label">线性注意力状态更新：外积累加</span>
+</div>
+
+<div class="callout callout-teal">
+  <strong>数学解读：</strong>$\tilde{k}_t^\top v_t$ 是一个 $d_h \times d_h$ 的<strong>外积矩阵</strong>（Outer Product），代表"新 Token 的 Key-Value 关联信息"。将它累加到 $S_t$ 中，就像把一滴墨水融入水池——新 Token 的信息被永久"融化"进了全局状态。
+</div>
+
+<h3>4.3 Attention 输出</h3>
+
+<h4>MHA：必须和所有历史重新计算</h4>
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Score} = q_t \cdot (\text{Cache}_K)^\top \in \mathbb{R}^{1 \times t}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$o_t = \text{softmax}(\text{Score}) \cdot \text{Cache}_V \in \mathbb{R}^{1 \times d_h}$$
+  </div>
+</div>
+
+<h4>线性注意力：直接查询状态矩阵</h4>
+
+<div class="formula-boxed">
+  $$o_t = \frac{\tilde{q}_t \, S_t}{\tilde{q}_t \, Z_t}$$
+  <span class="formula-label">用 Query 直接查询凝缩了所有历史的状态矩阵</span>
+</div>
+
+<h3>4.4 Decode 复杂度对比</h3>
+
+<table>
+  <thead><tr><th></th><th>MHA</th><th>线性注意力</th></tr></thead>
+  <tbody>
+    <tr><td><strong>状态更新</strong></td><td>$O(d_h)$（拼接）</td><td>$O(d_h^2)$（外积累加）</td></tr>
+    <tr><td><strong>Attention 计算</strong></td><td>$O(t \cdot d_h)$（随 $t$ 增长！）</td><td>$O(d_h^2)$（恒定！）</td></tr>
+    <tr><td><strong>Cache 读取</strong></td><td>$O(t \cdot d_h)$（全量读取）</td><td>$O(d_h^2)$（固定状态）</td></tr>
+    <tr><td><strong>总计 / 每步</strong></td><td><span class="text-red">$O(t \cdot d_h)$</span></td><td><span class="text-green">$O(d_h^2)$</span></td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-green">
+  <strong>关键区别：</strong>MHA 的 Decode 耗时随对话长度 $t$ <strong>线性增长</strong>——第 10 万个词比第 1 个词慢 10 万倍。而线性注意力的每一步<strong>完全恒定</strong>——无论是第 1 个词还是第 100 万个词，生成耗时一模一样。
+</div>
+
+<hr>
+
+<!-- ════════════════ §5 RNN 等价 ════════════════ -->
+<h2 id="sec5"><span class="sec-num">§5</span> 线性注意力 = Transformer 化身 RNN</h2>
+
+<h3>5.1 形式等价</h3>
+
+<div class="formula-group">
+  <div class="formula-row"><strong>线性注意力 Decode 递推：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$S_t = S_{t-1} + \tilde{k}_t^\top v_t, \qquad Z_t = Z_{t-1} + \tilde{k}_t^\top, \qquad o_t = \frac{\tilde{q}_t S_t}{\tilde{q}_t Z_t}$$
+  </div>
+  <div class="formula-row"><strong>经典 RNN 递推：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$h_t = f(h_{t-1}, x_t), \qquad o_t = g(h_t)$$
+  </div>
+  <div class="formula-note">
+    <strong>完全对应：</strong>$S_t$ 就是 RNN 的隐状态 $h_t$，更新规则从"非线性变换"变成了"外积累加"。线性注意力本质上是一个<strong>矩阵值的 RNN</strong>。
+  </div>
+</div>
+
+<h3>5.2 Transformer ↔ RNN 统一视角</h3>
+
+<table>
+  <thead>
+    <tr><th>特性</th><th>传统 MHA</th><th>线性注意力</th><th>经典 RNN (LSTM)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>历史访问</strong></td><td>全量访问所有历史 Token</td><td>通过状态矩阵隐式访问</td><td>通过隐状态隐式访问</td></tr>
+    <tr><td><strong>Decode 复杂度</strong></td><td>$O(t)$</td><td>$O(1)$</td><td>$O(1)$</td></tr>
+    <tr><td><strong>并行训练</strong></td><td>✓</td><td>✓（结合律批量计算）</td><td>✗（必须逐步递推）</td></tr>
+    <tr><td><strong>状态大小</strong></td><td>$O(t)$ 增长</td><td>$O(d_h^2)$ 恒定</td><td>$O(d_h)$ 恒定</td></tr>
+    <tr><td><strong>精确检索</strong></td><td>✓（精确匹配）</td><td>△（信息被"融化"）</td><td>✗（信息遗忘严重）</td></tr>
+    <tr><td><strong>训练效率</strong></td><td>$O(L^2)$</td><td>$O(L)$</td><td>$O(L)$（不可并行）</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-purple">
+  <strong>线性注意力的独特优势：</strong>它兼具 Transformer 的<strong>并行训练能力</strong>和 RNN 的<strong>恒定推理开销</strong>——而传统 RNN 无法并行训练，传统 Transformer 推理开销随序列增长。
+</div>
+
+<hr>
+
+<!-- ════════════════ §6 精度惩罚 ════════════════ -->
+<h2 id="sec6"><span class="sec-num">§6</span> 精度惩罚：为什么主流大模型不全用线性注意力？</h2>
+
+<h3>6.1 Softmax 的"赢者通吃"特性</h3>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$\text{Softmax}(z_i) = \frac{\exp(z_i)}{\sum_j \exp(z_j)}$$
+  </div>
+  <div class="formula-note">
+    当 $z_i$ 远大于其他分数时，$\text{Softmax}(z_i) \approx 1$，其余趋近于 0。<strong>精确检索能力</strong>：这使得 MHA 能从 128K 个历史 Token 中精确定位到那唯一正确的 Token（如大海捞针实验）。
+  </div>
+</div>
+
+<h3>6.2 线性注意力的"特征平均化"问题</h3>
+
+<div class="formula">
+  $$\text{Linear Attention Weight} \propto \phi(q)^\top \phi(k) \quad \text{（无指数放大，分布更平坦）}$$
+</div>
+
+<p>所有历史 Token 的信息被"融化"进同一个 $S_t$ 矩阵，相当于做了一种<strong>加权平均</strong>。需要精确回忆某个具体细节时，被平均化的信息可能<strong>无法被准确提取</strong>。</p>
+
+<div class="callout callout-red">
+  <strong>"大海捞针"困境：</strong>在 10 万词文档中插入一句关键信息，MHA 可以通过尖锐的注意力权重精准定位；线性注意力的平滑分布可能让这条关键信息"淹没"在海量上下文中。
+</div>
+
+<h3>6.3 状态压缩的信息瓶颈</h3>
+
+<p>$S_t \in \mathbb{R}^{d_h \times d_h}$ 是固定大小。当序列足够长时：</p>
+
+<div class="formula">
+  $$\text{信息量（bits）} = O(L \cdot d_h) \gg \text{状态容量} = O(d_h^2)$$
+</div>
+
+<div class="callout callout-yellow">
+  以 $d_h = 128, L = 100\text{K}$ 为例：信息量 $\propto 12.8\text{M}$，状态容量 $\propto 16\text{K}$——<strong>差 800 倍</strong>。绝大部分历史信息在压缩过程中不可避免地丢失。
+</div>
+
+<hr>
+
+<!-- ════════════════ §7 前沿 ════════════════ -->
+<h2 id="sec7"><span class="sec-num">§7</span> 前沿发展：线性注意力的变体与演进</h2>
+
+<table>
+  <thead>
+    <tr><th>模型 / 方法</th><th>核心创新</th><th>状态更新规则</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Mamba (S4/S6)</strong></td><td>选择性状态空间模型，输入依赖的门控</td><td>$h_t = A_t h_{t-1} + B_t x_t$</td></tr>
+    <tr><td><strong>RetNet</strong></td><td>引入衰减因子 $\gamma$，自动遗忘远古历史</td><td>$S_t = \gamma \, S_{t-1} + k_t^\top v_t$</td></tr>
+    <tr><td><strong>RWKV</strong></td><td>时间混合 + 通道混合</td><td>$wkv_t = \alpha \, wkv_{t-1} + e^{u+k_t} v_t$</td></tr>
+    <tr><td><strong>GLA</strong></td><td>门控线性注意力，学习的衰减矩阵</td><td>$S_t = G_t \odot S_{t-1} + k_t^\top v_t$</td></tr>
+    <tr><td><strong>DeltaNet</strong></td><td>Delta Rule 更新，选择性覆写</td><td>$S_t = S_{t-1} + k_t^\top (v_t - S_{t-1}^\top k_t)$</td></tr>
+    <tr><td><strong>Based</strong></td><td>短卷积 + 线性注意力混合</td><td>混合局部与全局注意力</td></tr>
+  </tbody>
+</table>
+
+<h3>共同趋势</h3>
+
+<ol>
+  <li><strong>引入衰减/遗忘：</strong>给 $S_t$ 加上衰减因子 $\gamma &lt; 1$，让远古信息自然淡出（模拟人类遗忘曲线）</li>
+  <li><strong>输入依赖的门控：</strong>让更新规则依赖当前输入，而非简单累加（选择性记忆）</li>
+  <li><strong>混合架构：</strong>部分层线性注意力（长距离），部分层标准注意力（精确检索）</li>
+  <li><strong>硬件适配：</strong>设计 IO 高效的 chunk-wise 并行训练算法（如 Mamba 的 selective scan）</li>
+</ol>
+
+<hr>
+
+<!-- ════════════════ §8 全局因果链 ════════════════ -->
+<h2 id="sec8"><span class="sec-num">§8</span> 全局因果链</h2>
+
+<div class="diagram"><strong>传统 MHA:</strong>
+
+    x_t ──→ [Q, K, V 投影] ──→ [读取全量 Cache: O(t)] ──→ [Q·K^T: O(t)] ──→ [Softmax·V] ──→ output
+                                        ↑
+                                  Cache 无限增长
+                                 Memory Bandwidth Bound
+
+
+<strong>线性注意力:</strong>
+
+    x_t ──→ [Q, K, V 投影] ──→ [φ(·) 特征映射]
+                                      │
+                                      ▼
+              [外积累加: S_t += k̃ᵀ v_t]    ← O(d_h²) 恒定更新
+                        │
+                        ▼
+              [查询状态: o_t = q̃ · S_t / q̃ · Z_t]    ← O(d_h²) 恒定计算
+                        │
+                        ▼
+                      output
+
+              状态大小恒定：128 × 128 = 16K 浮点数
+              无论序列多长，每步耗时完全相同</div>
+
+<hr>
+
+<!-- ════════════════ §9 演进全景 ════════════════ -->
+<h2 id="sec9"><span class="sec-num">§9</span> 注意力机制演进全景</h2>
+
+<div class="formula" style="text-align:center;">
+  $$\underbrace{\text{MHA}}_{O(L^2)} \xrightarrow{\text{KV 头裁撤}} \underbrace{\text{GQA}}_{O(L^2)} \xrightarrow{\text{特征压缩}} \underbrace{\text{MLA}}_{O(L^2)} \xrightarrow{\text{序列压缩}} \underbrace{\text{DSA}}_{O(L \cdot k)} \xrightarrow{\text{结合律}} \underbrace{\text{Linear}}_{O(d_h^2)}$$
+</div>
+
+<table>
+  <thead>
+    <tr><th>方案</th><th>Decode 复杂度</th><th>Cache 增长</th><th>精确检索</th><th>代表模型</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>MHA</strong></td><td>$O(L)$</td><td>线性增长</td><td>★★★★★</td><td>GPT-3/4</td></tr>
+    <tr><td><strong>GQA</strong></td><td>$O(L)$</td><td>线性（减缓）</td><td>★★★★☆</td><td>LLaMA-3</td></tr>
+    <tr><td><strong>MLA</strong></td><td>$O(L)$</td><td>线性（大幅减缓）</td><td>★★★★☆</td><td>DeepSeek-V2/V3</td></tr>
+    <tr><td><strong>DSA</strong></td><td>$O(k)$ 恒定</td><td>线性（含索引）</td><td>★★★★☆</td><td>DeepSeek 下一代</td></tr>
+    <tr><td><strong>Linear</strong></td><td>$O(1)$ 恒定</td><td><strong>恒定</strong></td><td>★★★☆☆</td><td>Mamba, RWKV, RetNet</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-yellow">
+  <strong>注意：</strong>这不是简单的"越新越好"。MHA 和 GQA 在精确检索上仍然无可替代；线性注意力在超长文本的流式生成场景中优势巨大。现代最优架构（如 Jamba, Zamba）倾向于<strong>混合使用</strong>两者。
+</div>
+
+<hr>
+
+<!-- ════════════════ References ════════════════ -->
+<h2 id="refs"><span class="sec-num">Ref</span> 参考文献</h2>
+
+<ol style="font-size:13px; line-height:1.75;">
+  <li>Katharopoulos, A. et al. <em>Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention.</em> ICML 2020.</li>
+  <li>Gu, A. &amp; Dao, T. <em>Mamba: Linear-Time Sequence Modeling with Selective State Spaces.</em> arXiv:2312.00752, 2023.</li>
+  <li>Sun, Y. et al. <em>Retentive Network: A Successor to Transformer for Large Language Models.</em> arXiv:2307.08621, 2023.</li>
+  <li>Peng, B. et al. <em>RWKV: Reinventing RNNs for the Transformer Era.</em> EMNLP 2023.</li>
+  <li>Yang, S. et al. <em>Gated Linear Attention Transformers with Hardware-Efficient Training.</em> ICML 2024.</li>
+  <li>Schlag, I. et al. <em>Linear Transformers Are Secretly Fast Weight Programmers.</em> ICML 2021.</li>
+  <li>Choromanski, K. et al. <em>Rethinking Attention with Performers.</em> ICLR 2021.</li>
+  <li>Vaswani, A. et al. <em>Attention Is All You Need.</em> NeurIPS 2017.</li>
+</ol>
+
+</body>
+</html>
