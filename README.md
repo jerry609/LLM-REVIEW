@@ -112,6 +112,8 @@
 |------|------|
 | [`multi-head-divergence.md`](notes/attention/multi-head-divergence.md) | 多头注意力为何学到不同空间：几何投影、隐式偏置、Muon 优化器、Induction Heads |
 | [`attention-evolution-and-inference.md`](notes/attention/attention-evolution-and-inference.md) | 注意力机制演进全景（MHA→MQA→GQA→MLA→SSM）+ 端到端推理流程 |
+| [`mha-vs-mla-full-derivation.md`](notes/attention/mha-vs-mla-full-derivation.md) | **MHA vs MLA 全流程对比**：三次矩阵吸收推导、Decode 阶段带宽分析、伪代码 |
+| [`mha-vs-gqa-full-derivation.md`](notes/attention/mha-vs-gqa-full-derivation.md) | **MHA vs GQA 全流程对比**：分组共享 KV、SRAM 复用、Roofline 分析、GQA vs MLA 哲学 |
 | [`flashattention.md`](notes/attention/flashattention.md) | FlashAttention 原理与实现细节 |
 | [`linear-attention.md`](notes/attention/linear-attention.md) | 线性注意力机制（Mamba、RWKV） |
 | [`long-context.md`](notes/attention/long-context.md) | 长上下文处理技术 |
@@ -216,6 +218,8 @@
 |------|------|
 | [`multi-head-divergence.html`](notebooks/multi-head-divergence.html) | 多头注意力分化机制：几何投影 → 隐式偏置 → Muon 优化器 → Induction Heads |
 | [`attention-evolution-and-inference.html`](notebooks/attention-evolution-and-inference.html) | 注意力机制演进（MHA/MQA/GQA/MLA）+ 现代推理引擎优化全景 |
+| [`mha-vs-mla-full-derivation.html`](notebooks/mha-vs-mla-full-derivation.html) | **MHA vs MLA 全流程对比**：三次矩阵吸收推导 + Decode 伪代码 |
+| [`mha-vs-gqa-full-derivation.html`](notebooks/mha-vs-gqa-full-derivation.html) | **MHA vs GQA 全流程对比**：分组共享 + SRAM 复用 + Roofline 性能分析 |
 | [`kv_cache_pipeline.html`](notebooks/kv_cache_pipeline.html) | KV Cache 压缩流水线：H2O / StreamingLLM / SnapKV / Ada-KV / ACTA |
 
 ### Jupyter Notebook 实验
@@ -233,6 +237,8 @@
 | [`reasoning_models_workshop.ipynb`](notebooks/reasoning_models_workshop.ipynb) | 推理模型 Workshop |
 | [`rag_prefix_caching_simulator.ipynb`](notebooks/rag_prefix_caching_simulator.ipynb) | RAG + Prefix Caching 模拟 |
 | [`vllm_architecture_walkthrough.ipynb`](notebooks/vllm_architecture_walkthrough.ipynb) | vLLM 架构源码走读 |
+| [`mla_latent_space_analysis.ipynb`](notebooks/mla_latent_space_analysis.ipynb) | **MLA 潜在空间分析**：SVD 衰减 / 压缩重建 / RoPE 解耦 / 瓶颈训练 / 注意力保真 |
+| [`needle_in_haystack_demo.ipynb`](notebooks/needle_in_haystack_demo.ipynb) | **大海捞针评测**：5 模型模拟 / 热力图 / Lost in the Middle / MLA vs MHA 对比 |
 | [`leetcode_llm_system_related.ipynb`](notebooks/leetcode_llm_system_related.ipynb) | LLM 系统相关算法题 |
 
 ---

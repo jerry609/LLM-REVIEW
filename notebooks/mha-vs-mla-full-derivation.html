@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>传统 MHA vs MLA：全流程数学与矩阵推导对比</title>
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '$', right: '$', display: false}
+    ],
+    throwOnError: false
+  });"></script>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --border: #d1d5db;
+    --code-bg: #f8f9fa;
+    --section-bg: #fafbfc;
+    --heading: #0f172a;
+    --muted: #64748b;
+    --red: #dc2626;
+    --green: #16a34a;
+    --orange: #ea580c;
+    --purple: #7c3aed;
+    --teal: #0d9488;
+    --yellow-bg: #fefce8;
+    --blue-bg: #eff6ff;
+    --green-bg: #f0fdf4;
+    --red-bg: #fef2f2;
+    --purple-bg: #faf5ff;
+    --font-serif: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-serif);
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.85;
+    font-size: 15px;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 48px 28px 80px;
+  }
+
+  /* ── Title Block ── */
+  .paper-title {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--heading);
+    text-align: center;
+    margin-bottom: 10px;
+    letter-spacing: -0.2px;
+    line-height: 1.35;
+  }
+  .paper-subtitle {
+    text-align: center;
+    color: var(--heading);
+    font-size: 15px;
+    font-style: italic;
+    margin-bottom: 28px;
+    font-family: var(--font-serif);
+  }
+
+  /* ── Typography ── */
+  h2 {
+    font-family: var(--font-serif);
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--heading);
+    margin: 38px 0 14px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2 .sec-num {
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  h3 {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--heading);
+    margin: 22px 0 8px;
+  }
+  h4 {
+    font-family: var(--font-sans);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--purple);
+    margin: 16px 0 6px;
+  }
+
+  p { margin: 8px 0; text-align: justify; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  /* ── Code / Pre ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 12px 0;
+    white-space: pre;
+    color: #1e293b;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent);
+  }
+
+  /* ── Diagram boxes ── */
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    margin: 14px 0;
+    white-space: pre;
+  }
+
+  /* ── LaTeX formula blocks ── */
+  .formula {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .formula-label {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    margin-top: 6px;
+  }
+  .formula-group {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0;
+    overflow-x: auto;
+  }
+  .formula-row { margin: 4px 0; }
+  .formula-note {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.65;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+  }
+
+  /* KaTeX overrides */
+  .katex { font-size: 1.05em; }
+  .formula .katex { font-size: 1.15em; }
+  .formula-group .katex { font-size: 1.1em; }
+  .katex-display { margin: 0.5em 0; }
+
+  /* ── Callout boxes ── */
+  .callout {
+    border-left: 3px solid;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .callout-blue   { background: var(--blue-bg);   border-color: var(--accent); }
+  .callout-green  { background: var(--green-bg);  border-color: var(--green); }
+  .callout-red    { background: var(--red-bg);     border-color: var(--red); }
+  .callout-yellow { background: var(--yellow-bg);  border-color: var(--orange); }
+  .callout-purple { background: var(--purple-bg);  border-color: var(--purple); }
+  .callout strong { font-weight: 600; }
+
+  /* ── Theorem / Definition / Remark boxes ── */
+  .theorem-box {
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px;
+    margin: 16px 0;
+    background: var(--blue-bg);
+    border-radius: 0 4px 4px 0;
+  }
+  .theorem-box .theorem-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+  .key-box {
+    border: 2px solid var(--purple);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    background: var(--purple-bg);
+  }
+  .key-box .key-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--purple);
+    margin-bottom: 6px;
+    font-family: var(--font-sans);
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13.5px;
+    font-family: var(--font-sans);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: var(--section-bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--heading);
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* ── Comparison table (side by side) ── */
+  .compare-table th:first-child { width: 20%; }
+  .compare-table .col-mha { background: #eff6ff; }
+  .compare-table .col-mla { background: #f0fdf4; }
+  .compare-table th.col-mha { background: var(--accent); color: #fff; }
+  .compare-table th.col-mla { background: var(--green); color: #fff; }
+
+  /* ── Lists ── */
+  ul, ol { margin: 8px 0 8px 24px; }
+  li { margin: 4px 0; }
+
+  /* ── Divider ── */
+  hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 32px 0;
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--section-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 0 0 32px;
+    font-family: var(--font-sans);
+  }
+  .toc-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--heading);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: var(--font-serif);
+  }
+  .toc ol { margin-left: 20px; counter-reset: toc-counter; list-style: none; }
+  .toc ol li { counter-increment: toc-counter; margin: 3px 0; font-size: 13.5px; }
+  .toc ol li::before { content: counter(toc-counter) ". "; font-weight: 600; color: var(--accent); }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ── vs-badge ── */
+  .vs-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-right: 4px;
+  }
+  .vs-mha { background: var(--accent-light); color: var(--accent); }
+  .vs-mla { background: #dcfce7; color: var(--green); }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    font-family: var(--font-sans);
+  }
+</style>
+</head>
+<body>
+
+<h1 class="paper-title">传统 MHA vs MLA：全流程数学与矩阵推导对比</h1>
+<p class="paper-subtitle">Matrix Absorption — MLA 在 Decode 阶段"永不解压 KV Cache"的数学原理</p>
+
+<!-- ── Abstract ── -->
+<div class="callout callout-blue" style="margin-bottom: 32px; font-size: 14.5px;">
+  <strong>摘要：</strong>本文以严格的数学形式，完整推导 Multi-Head Attention (MHA) 与 Multi-head Latent Attention (MLA) 在<strong>训练/Prefill</strong> 和 <strong>推理/Decode</strong> 两个阶段的每一步计算。重点阐明 MLA 在 Decode 阶段通过<strong>矩阵吸收（Matrix Absorption）</strong>技术，实现"永不解压 KV Cache"这一核心工程洞见的数学原理。三次矩阵吸收的本质均为矩阵乘法结合律 $(AB)C = A(BC)$，将解压矩阵从 Cache 侧转移到 Query/Output 侧，从而使 Decode 内存 IO 降低约 <strong>30–57×</strong>。
+</div>
+
+<!-- ── TOC ── -->
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <ol>
+    <li><a href="#sec0">符号约定</a></li>
+    <li><a href="#sec1">输入定义</a></li>
+    <li><a href="#sec2">训练 / Prefill 阶段</a></li>
+    <li><a href="#sec3">KV Cache 阶段</a></li>
+    <li><a href="#sec4">推理 / Decode 阶段（矩阵吸收核心）</a></li>
+    <li><a href="#sec5">三次矩阵吸收总结</a></li>
+    <li><a href="#sec6">Decode 计算量与带宽对比</a></li>
+    <li><a href="#sec7">预计算融合权重清单</a></li>
+    <li><a href="#sec8">MLA Decode 完整伪代码</a></li>
+    <li><a href="#sec9">数学保证：Why It Works</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §0 符号约定 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec0"><span class="sec-num">§0</span> 符号约定</h2>
+
+<table>
+  <tr><th>符号</th><th>含义</th><th>典型值 (DeepSeek-V2)</th></tr>
+  <tr><td>$L$</td><td>序列长度 (Sequence Length)</td><td>可变</td></tr>
+  <tr><td>$d$</td><td>模型隐藏维度 (d_model)</td><td>5120</td></tr>
+  <tr><td>$n_h$</td><td>注意力头数</td><td>128</td></tr>
+  <tr><td>$d_h$</td><td>每头维度 $= d / n_h$</td><td>128</td></tr>
+  <tr><td>$d_c$</td><td>MLA 的 KV 潜在空间维度</td><td>512</td></tr>
+  <tr><td>$d_c'$</td><td>MLA 的 Q 潜在空间维度</td><td>1536</td></tr>
+  <tr><td>$d_r$</td><td>解耦 RoPE 维度</td><td>64</td></tr>
+</table>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §1 输入定义 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec1"><span class="sec-num">§1</span> 输入定义</h2>
+
+<p>两种机制共享完全相同的输入：</p>
+
+<div class="formula">
+  $$X \in \mathbb{R}^{L \times d}$$
+</div>
+
+<p>其中 $X$ 是经过 Embedding + 前序 Transformer Block 计算后、进入当前注意力层的隐状态矩阵。每一行 $x_t \in \mathbb{R}^{1 \times d}$ 代表第 $t$ 个 token 的表示。</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §2 训练 / Prefill 阶段 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec2"><span class="sec-num">§2</span> 训练 / Prefill 阶段</h2>
+
+<p>在 Prefill 阶段，模型一次性处理完整序列 $X$（长度为 $L$），计算所有位置的注意力并写入 KV Cache。</p>
+
+<!-- 2.1 Query 投影 -->
+<h3>2.1 Query 投影</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span> 对每个头独立投影</h4>
+
+<div class="formula">
+  $$Q_i = X \, W_i^Q \quad \in \mathbb{R}^{L \times d_h}, \qquad W_i^Q \in \mathbb{R}^{d \times d_h}, \quad i = 1, \ldots, n_h$$
+  <span class="formula-label">(1) MHA Query Projection</span>
+</div>
+
+<p>实际实现中，所有头的 $W_i^Q$ 被拼接为一个大矩阵 $W^Q \in \mathbb{R}^{d \times (n_h \cdot d_h)}$，一次矩阵乘法完成。</p>
+
+<h4><span class="vs-badge vs-mla">MLA</span> 引入 Q 潜在空间压缩</h4>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$c^Q = X \, W^{DQ} \quad \in \mathbb{R}^{L \times d_c'}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$Q_i^C = c^Q \, W_i^{UQ} \quad \in \mathbb{R}^{L \times d_h}$$
+  </div>
+  <div class="formula-note">
+    其中 $W^{DQ} \in \mathbb{R}^{d \times d_c'}$ 是 Q 的<strong>下投影矩阵</strong>，$W_i^{UQ} \in \mathbb{R}^{d_c' \times d_h}$ 是第 $i$ 个头的<strong>上投影矩阵</strong>。DeepSeek-V2 中 $d_c' = 1536$。
+  </div>
+</div>
+
+<div class="callout callout-yellow">
+  <strong>为什么 Q 也要压缩？</strong> 在 Prefill 阶段，Q 压缩节省的计算量有限。但这为后续 Decode 阶段的矩阵吸收提供了关键的数学前提——使得 Q 和 K 能在同一个低维空间里直接做点积。
+</div>
+
+<!-- 2.2 KV 投影 -->
+<h3>2.2 Key、Value 投影 <span style="color: var(--red); font-weight: 700;">⭐ 核心差异点</span></h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span> 每个头独立投影，生成高维 K、V</h4>
+
+<div class="formula">
+  $$K_i = X \, W_i^K \in \mathbb{R}^{L \times d_h}, \qquad V_i = X \, W_i^V \in \mathbb{R}^{L \times d_h}$$
+  <span class="formula-label">(2) MHA KV Projection — 每头独立</span>
+</div>
+
+<p>全部 $n_h$ 个头产生 $n_h$ 套独立的 K、V 矩阵。</p>
+
+<h4><span class="vs-badge vs-mla">MLA</span> 统一下投影到潜在空间（不分头！）</h4>
+
+<div class="key-box">
+  <div class="key-title">MLA 核心公式 — KV 联合压缩</div>
+  <div style="text-align:center; margin: 10px 0;">
+    $$\boxed{C^{KV} = X \, W^{DKV} \quad \in \mathbb{R}^{L \times d_c}}$$
+  </div>
+  <p style="font-size: 13.5px;">其中 $W^{DKV} \in \mathbb{R}^{d \times d_c}$。所有 $n_h$ 个头的 Key 和 Value 信息，被<strong>联合压缩</strong>到一个维度仅为 $d_c$ 的共享潜在向量中。</p>
+</div>
+
+<div class="callout callout-purple">
+  <strong>数学本质：</strong>$W^{DKV}$ 等价于对 $\text{Concat}(W^K, W^V) \in \mathbb{R}^{d \times 2n_h d_h}$ 做了一次最优低秩近似。前提是 KV 矩阵的固有秩（Intrinsic Rank）远小于 $2n_h d_h$——这已被 SVD 实验反复验证。
+</div>
+
+<!-- 2.3 KV 解压 -->
+<h3>2.3 K、V 解压</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+<p><strong>不需要</strong>——直接使用 §2.2 中投影得到的高维矩阵。</p>
+
+<h4><span class="vs-badge vs-mla">MLA</span> 对每个头独立上投影</h4>
+
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$K_i^C = C^{KV} \, W_i^{UK} \quad \in \mathbb{R}^{L \times d_h}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$V_i^C = C^{KV} \, W_i^{UV} \quad \in \mathbb{R}^{L \times d_h}$$
+  </div>
+  <div class="formula-note">
+    其中 $W_i^{UK}, W_i^{UV} \in \mathbb{R}^{d_c \times d_h}$。在 Prefill 阶段确实需要解压出完整的 K 和 V 来计算注意力分数——但<strong>解压后的结果不缓存</strong>！KV Cache 中只保存 $C^{KV}$。
+  </div>
+</div>
+
+<!-- 2.4 RoPE -->
+<h3>2.4 位置编码 (RoPE)</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span> 直接应用在全量 Q、K 上</h4>
+
+<div class="formula">
+  $$\hat{Q}_i = \text{RoPE}(Q_i), \qquad \hat{K}_i = \text{RoPE}(K_i)$$
+  <span class="formula-label">(3) Standard RoPE Application</span>
+</div>
+
+<h4><span class="vs-badge vs-mla">MLA</span> 解耦 RoPE <span style="color: var(--red);">⭐ 关键设计</span></h4>
+
+<p>MLA 不能对 $C^{KV}$ 直接施加 RoPE，因为 RoPE 是位置相关的旋转，会破坏潜在空间的低秩结构。</p>
+
+<div class="formula-group">
+  <div class="formula-row"><strong>单独投影 RoPE Key 和 Query：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$K^R = X \, W^{KR} \in \mathbb{R}^{L \times d_r}, \qquad Q^R = X \, W^{QR} \in \mathbb{R}^{L \times d_r}$$
+  </div>
+  <div class="formula-row"><strong>分别施加 RoPE 后，与语义部分拼接：</strong></div>
+  <div class="formula-row" style="text-align:center;">
+    $$\hat{Q}_i = \left[\; Q_i^C \;\|\; \text{RoPE}(Q^R) \;\right] \in \mathbb{R}^{L \times (d_h + d_r)}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$\hat{K}_i = \left[\; K_i^C \;\|\; \text{RoPE}(K^R) \;\right] \in \mathbb{R}^{L \times (d_h + d_r)}$$
+  </div>
+  <div class="formula-note">
+    <strong>设计哲学：</strong>语义信息（who/what）走压缩路径；位置信息（where）走独立路径。两条路径在注意力计算时自然融合。
+  </div>
+</div>
+
+<!-- 2.5 Attention -->
+<h3>2.5 Attention 计算</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+
+<div class="formula">
+  $$S_i = \text{softmax}\!\left(\frac{\hat{Q}_i \, \hat{K}_i^\top}{\sqrt{d_h}} + M\right), \qquad O_i = S_i \, V_i$$
+  <span class="formula-label">(4) MHA Attention</span>
+</div>
+
+<h4><span class="vs-badge vs-mla">MLA</span></h4>
+
+<div class="formula">
+  $$S_i = \text{softmax}\!\left(\frac{\hat{Q}_i \, \hat{K}_i^\top}{\sqrt{d_h + d_r}} + M\right), \qquad O_i = S_i \, V_i^C$$
+  <span class="formula-label">(5) MLA Attention — 注意缩放因子为 $\sqrt{d_h + d_r}$</span>
+</div>
+
+<!-- 2.6 Output -->
+<h3>2.6 Output 投影</h3>
+
+<p>两种方式<strong>完全一致</strong>：</p>
+
+<div class="formula">
+  $$O = \text{Concat}(O_1, O_2, \ldots, O_{n_h}) \, W^O \quad \in \mathbb{R}^{L \times d}$$
+  <span class="formula-label">(6) Output Projection</span>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §3 KV Cache 阶段 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec3"><span class="sec-num">§3</span> KV Cache 阶段</h2>
+
+<p>这是 MLA 相对 MHA 的核心优势所在。</p>
+
+<h3>3.1 物理存储内容</h3>
+
+<table class="compare-table">
+  <tr>
+    <th></th>
+    <th class="col-mha">MHA</th>
+    <th class="col-mla">MLA</th>
+  </tr>
+  <tr>
+    <td><strong>Cache 内容</strong></td>
+    <td class="col-mha">所有头的完整 K 和 V：<br>$\{\hat{K}_i, V_i\}_{i=1}^{n_h}$</td>
+    <td class="col-mla">唯一潜在向量 + 解耦 RoPE Key：<br>$\{C^{KV},\; \text{RoPE}(K^R)\}$</td>
+  </tr>
+  <tr>
+    <td><strong>头相关性</strong></td>
+    <td class="col-mha">头相关：每个头有独立的 K/V</td>
+    <td class="col-mla"><strong>头无关</strong>（Head-agnostic）：<br>无论多少个头，Cache 体积不变！</td>
+  </tr>
+</table>
+
+<h3>3.2 显存占用对比（每层每 token）</h3>
+
+<table class="compare-table">
+  <tr>
+    <th>指标</th>
+    <th class="col-mha">MHA</th>
+    <th class="col-mla">MLA</th>
+  </tr>
+  <tr>
+    <td><strong>公式</strong></td>
+    <td class="col-mha">$2 \times n_h \times d_h = 2d$</td>
+    <td class="col-mla">$d_c + d_r$</td>
+  </tr>
+  <tr>
+    <td><strong>维度数</strong></td>
+    <td class="col-mha">$2 \times 128 \times 128 = 32768$</td>
+    <td class="col-mla">$512 + 64 = 576$</td>
+  </tr>
+  <tr>
+    <td><strong>FP16 字节数</strong></td>
+    <td class="col-mha">65,536 bytes = 64 KB</td>
+    <td class="col-mla">1,152 bytes ≈ 1.1 KB</td>
+  </tr>
+  <tr>
+    <td><strong>压缩比</strong></td>
+    <td class="col-mha" colspan="2" style="text-align: center; font-weight: 700; font-size: 16px; color: var(--red);">32768 / 576 ≈ 56.9×</td>
+  </tr>
+</table>
+
+<h3>3.3 全模型 KV Cache 对比</h3>
+
+<p>假设 60 层，序列长度 128K，FP16：</p>
+
+<table>
+  <tr><th>指标</th><th>MHA</th><th>MLA</th><th>压缩比</th></tr>
+  <tr><td>每 token 总维度</td><td>$60 \times 32768 = 1{,}966{,}080$</td><td>$60 \times 576 = 34{,}560$</td><td>56.9×</td></tr>
+  <tr><td>128K 序列总显存</td><td><strong>≈ 477 GB</strong></td><td><strong>≈ 8.4 GB</strong></td><td>56.9×</td></tr>
+</table>
+
+<div class="callout callout-red">
+  <strong>MHA 方案在 128K 上下文时需要 477 GB 仅用于 KV Cache</strong>——远超任何单卡的显存容量。MLA 将其压缩到 8.4 GB，在单张 A100 80GB 上从容运行。
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §4 推理 / Decode 阶段 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec4"><span class="sec-num">§4</span> 推理 / Decode 阶段 <span style="color: var(--red); font-weight: 700;">⭐⭐ 矩阵吸收核心</span></h2>
+
+<p>Decode 阶段是自回归生成：每一步仅输入一个新 token $x_t \in \mathbb{R}^{1 \times d}$，需要与所有历史 token 的 KV Cache 交互。<strong>这是 MLA 工程实现中最精妙的部分——通过矩阵结合律，将"解压 Cache"的计算完全消除。</strong></p>
+
+<!-- 4.1 计算新 Query -->
+<h3>4.1 计算新 Query</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+<div class="formula">
+  $$q_{t,i} = \text{RoPE}\!\left(x_t \, W_i^Q\right) \in \mathbb{R}^{1 \times d_h}$$
+</div>
+
+<h4><span class="vs-badge vs-mla">MLA</span></h4>
+<div class="formula-group">
+  <div class="formula-row" style="text-align:center;">
+    $$c_t^Q = x_t \, W^{DQ} \in \mathbb{R}^{1 \times d_c'}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$q_{t,i}^C = c_t^Q \, W_i^{UQ} \in \mathbb{R}^{1 \times d_h}$$
+  </div>
+  <div class="formula-row" style="text-align:center;">
+    $$q_{t,i}^R = \text{RoPE}\!\left(x_t \, W^{QR}\right) \in \mathbb{R}^{1 \times d_r}$$
+  </div>
+</div>
+
+<!-- 4.2 重构 K -->
+<h3>4.2 重构 K（准备点积）</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+<p>直接从 Cache 读取高维 K：$\hat{K}_i^{\text{cached}} \in \mathbb{R}^{L \times d_h}$（已存储）。</p>
+
+<h4><span class="vs-badge vs-mla">MLA</span></h4>
+<p>理论上需要解压：$K_i^C = C^{KV} \, W_i^{UK} \in \mathbb{R}^{L \times d_h}$。</p>
+<p style="font-size: 16px; font-weight: 700; color: var(--red); text-align: center; margin: 12px 0;">但实际推理中——绝对不执行这一步！</p>
+
+<!-- 4.3 Q 吸收 -->
+<h3>4.3 矩阵吸收 #1：Q 融合 <span style="color: var(--red); font-weight: 700;">⭐⭐⭐ MLA 的核心魔法</span></h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+<p>无此步骤。</p>
+
+<h4><span class="vs-badge vs-mla">MLA</span></h4>
+
+<div class="theorem-box">
+  <div class="theorem-title">推导：矩阵吸收消除 K 的解压</div>
+  <p><strong>起点</strong>——语义部分的注意力分数：</p>
+  <div style="text-align:center;">$$\text{Score}_{\text{sem}} = q_{t,i}^C \cdot (K_i^C)^\top$$</div>
+  <p><strong>展开</strong> $K_i^C = C^{KV} W_i^{UK}$：</p>
+  <div style="text-align:center;">$$= q_{t,i}^C \cdot (C^{KV} W_i^{UK})^\top = q_{t,i}^C \cdot (W_i^{UK})^\top \cdot (C^{KV})^\top$$</div>
+  <p><strong>利用结合律</strong>，将 $q_{t,i}^C$ 和 $(W_i^{UK})^\top$ 先结合：</p>
+  <div style="text-align:center; font-size: 16px;">
+    $$\boxed{\tilde{q}_{t,i}^C = q_{t,i}^C \cdot (W_i^{UK})^\top \quad \in \mathbb{R}^{1 \times d_c}}$$
+  </div>
+  <p>此时：$\text{Score}_{\text{sem}} = \tilde{q}_{t,i}^C \cdot (C^{KV})^\top$</p>
+</div>
+
+<div class="callout callout-green">
+  <strong>深刻理解：</strong>$\tilde{q}_{t,i}^C$ 是一个 $d_c = 512$ 维的向量——<strong>它已经从高维 Query 空间变换到了低维潜在空间</strong>。这意味着我们可以直接用这个低维 Query 与低维 Cache $C^{KV}$ 做点积，<strong>完全绕过了 K 的解压过程</strong>！<br><br>
+  从物理意义上讲：$W_i^{UK}$（原本负责"解压" K）被"吸收"到了 Query 的变换中。Q 自己戴上了一副"滤镜"，使得它能直接看懂压缩后的语言。
+</div>
+
+<!-- 4.4 Attention 点积 -->
+<h3>4.4 Attention 点积</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+<div class="formula">
+  $$\text{Score}_{t,i} = q_{t,i} \cdot (\hat{K}_i^{\text{cached}})^\top \quad \in \mathbb{R}^{1 \times L}$$
+  <span class="formula-label">计算复杂度: $O(d_h \times L)$，读取 Cache: $O(n_h \times d_h \times L)$</span>
+</div>
+
+<h4><span class="vs-badge vs-mla">MLA</span></h4>
+
+<div class="key-box">
+  <div class="key-title">MLA Decode 注意力计算 — 在潜在空间内完成</div>
+  <div style="text-align:center; margin: 10px 0;">
+    $$\boxed{\text{Score}_{t,i} = \underbrace{\tilde{q}_{t,i}^C \cdot (C^{KV})^\top}_{\text{语义分数（潜在空间内）}} + \underbrace{q_{t,i}^R \cdot (\text{RoPE}(K^R))^\top}_{\text{位置分数}}}$$
+  </div>
+  <p style="font-size: 13px;">语义部分：$O(d_c \times L)$。位置部分：$O(d_r \times L)$。<strong>读取 Cache 总体积：$O((d_c + d_r) \times L)$ — 仅为 MHA 的 $1/30$。</strong></p>
+</div>
+
+<div class="callout callout-yellow">
+  <strong>工程意义：</strong>Decode 阶段是 <strong>Memory-Bandwidth Bound</strong>——瓶颈在于从 HBM 读取 KV Cache 的速度，而非 GPU 的计算能力。MLA 将 Cache 读取量压缩 30×+，直接将 Decode 吞吐量提升了一个数量级。
+</div>
+
+<!-- 4.5 V 加权和 -->
+<h3>4.5 矩阵吸收 #2：V 加权和</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+<div class="formula">
+  $$o_{t,i} = \text{softmax}(\text{Score}_{t,i}) \cdot V_i^{\text{cached}} \quad \in \mathbb{R}^{1 \times d_h}$$
+  <span class="formula-label">读取庞大的 $V_i \in \mathbb{R}^{L \times d_h}$</span>
+</div>
+
+<h4><span class="vs-badge vs-mla">MLA</span></h4>
+
+<div class="theorem-box">
+  <div class="theorem-title">推导：V 吸收 — 先在潜在空间求和，再解压</div>
+  <p><strong>理论上需要：</strong></p>
+  <div style="text-align:center;">$$o_{t,i} = \alpha \cdot (C^{KV} \, W_i^{UV})$$</div>
+  <p>其中 $\alpha = \text{softmax}(\text{Score}_{t,i}) \in \mathbb{R}^{1 \times L}$。</p>
+  <p><strong>利用结合律</strong>，改变计算顺序：</p>
+  <div style="text-align:center;">
+    $$\boxed{u_{t,i} = \alpha \cdot C^{KV} \quad \in \mathbb{R}^{1 \times d_c}}$$
+  </div>
+  <div style="text-align:center;">
+    $$o_{t,i} = u_{t,i} \cdot W_i^{UV} \quad \in \mathbb{R}^{1 \times d_h}$$
+  </div>
+  <p>$u_{t,i}$ 是 $d_c = 512$ 维的"潜在空间中的注意力输出"——<strong>仅需读取极小的 $C^{KV}$ 矩阵</strong>。</p>
+</div>
+
+<!-- 4.6 O 融合 -->
+<h3>4.6 矩阵吸收 #3：O 融合</h3>
+
+<h4><span class="vs-badge vs-mha">MHA</span></h4>
+<div class="formula">
+  $$o_t = \sum_{i=1}^{n_h} o_{t,i} \, W_i^O$$
+</div>
+
+<h4><span class="vs-badge vs-mla">MLA</span></h4>
+
+<div class="theorem-box">
+  <div class="theorem-title">推导：将 V 解压矩阵吸收到输出矩阵中</div>
+  <p><strong>展开</strong> $o_{t,i} = u_{t,i} \cdot W_i^{UV}$：</p>
+  <div style="text-align:center;">$$o_t = \sum_{i=1}^{n_h} (u_{t,i} \cdot W_i^{UV}) \cdot W_i^O$$</div>
+  <p><strong>再次利用结合律</strong>：</p>
+  <div style="text-align:center; font-size: 16px;">
+    $$\boxed{o_t = \sum_{i=1}^{n_h} u_{t,i} \cdot \underbrace{(W_i^{UV} \cdot W_i^O)}_{W_i^{UV\_O} \;\in\; \mathbb{R}^{d_c \times d}}}$$
+  </div>
+  <p>融合权重 $W_i^{UV\_O}$ 在<strong>模型加载时一次性预计算</strong>，推理过程中直接使用。</p>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §5 三次矩阵吸收总结 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec5"><span class="sec-num">§5</span> 三次矩阵吸收总结</h2>
+
+<table>
+  <tr>
+    <th>吸收步骤</th>
+    <th>原始计算</th>
+    <th>吸收后计算</th>
+    <th>消除的中间量</th>
+  </tr>
+  <tr>
+    <td><strong>#1 Q 吸收</strong></td>
+    <td>$q^C \cdot (C^{KV} W^{UK})^\top$</td>
+    <td>$\tilde{q}^C \cdot (C^{KV})^\top$</td>
+    <td>$K_i^C \in \mathbb{R}^{L \times d_h}$</td>
+  </tr>
+  <tr>
+    <td><strong>#2 V 吸收</strong></td>
+    <td>$\alpha \cdot (C^{KV} W^{UV})$</td>
+    <td>$(\alpha \cdot C^{KV}) \cdot W^{UV}$</td>
+    <td>$V_i^C \in \mathbb{R}^{L \times d_h}$</td>
+  </tr>
+  <tr>
+    <td><strong>#3 O 吸收</strong></td>
+    <td>$u \cdot W^{UV} \cdot W^O$</td>
+    <td>$u \cdot W^{UV\_O}$</td>
+    <td>$o_i \in \mathbb{R}^{1 \times d_h}$</td>
+  </tr>
+</table>
+
+<div class="callout callout-purple">
+  <strong>统一视角：</strong>三次吸收的本质都是矩阵乘法的<strong>结合律</strong> $(AB)C = A(BC)$。MLA 的设计使得 KV Cache 中的 $C^{KV}$ 总是出现在矩阵链的中间位置，因此可以通过改变结合顺序，将解压矩阵 $W^{UK}, W^{UV}$"推"到 $C^{KV}$ 的另一侧——要么吸收到 Query 中（Q 吸收），要么吸收到输出权重中（V+O 吸收）。
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §6 Decode 计算量与带宽对比 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec6"><span class="sec-num">§6</span> Decode 计算量与带宽对比</h2>
+
+<h3>6.1 单步 Decode 内存读取量</h3>
+
+<table class="compare-table">
+  <tr>
+    <th>操作</th>
+    <th class="col-mha">MHA</th>
+    <th class="col-mla">MLA</th>
+  </tr>
+  <tr>
+    <td>读 K Cache</td>
+    <td class="col-mha">$n_h \times d_h \times L$</td>
+    <td class="col-mla">$d_c \times L + d_r \times L$</td>
+  </tr>
+  <tr>
+    <td>读 V Cache</td>
+    <td class="col-mha">$n_h \times d_h \times L$</td>
+    <td class="col-mla">$d_c \times L$（与 K 共享 $C^{KV}$）</td>
+  </tr>
+  <tr>
+    <td><strong>总读取维度</strong></td>
+    <td class="col-mha">$2 n_h d_h L$</td>
+    <td class="col-mla">$(2d_c + d_r) L$</td>
+  </tr>
+</table>
+
+<p>以 DeepSeek-V2 参数为例：</p>
+
+<table>
+  <tr><th></th><th>MHA</th><th>MLA</th><th>压缩比</th></tr>
+  <tr>
+    <td>每 token 读取维度</td>
+    <td>$2 \times 128 \times 128 = 32768$</td>
+    <td>$2 \times 512 + 64 = 1088$</td>
+    <td><strong>30.1×</strong></td>
+  </tr>
+</table>
+
+<h3>6.2 吞吐量提升的数学解释</h3>
+
+<p>Decode 是典型的 Memory-Bandwidth Bound 计算。根据 Roofline 模型：</p>
+
+<div class="formula">
+  $$\text{Decode Latency} \propto \frac{\text{Total Bytes Read from HBM}}{\text{HBM Bandwidth}}$$
+</div>
+
+<p>MLA 将读取量压缩约 30×：</p>
+
+<div class="formula">
+  $$\text{Speedup}_{\text{MLA}} \approx \frac{\text{Mem}_{\text{MHA}}}{\text{Mem}_{\text{MLA}}} = \frac{32768}{1088} \approx 30\times$$
+  <span class="formula-label">(7) Theoretical Decode Speedup</span>
+</div>
+
+<div class="callout callout-green">
+  <strong>注意：</strong>MLA 在计算 Score 和 V 加权和时，$C^{KV}$ 需要被读取两次。但由于它非常小（512 维 vs MHA 的 16384 维），总读取量依然远小于 MHA。在实际 GPU 实现中，$C^{KV}$ 的两次读取可以利用 L2 Cache 命中，进一步减少 HBM 访问。
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §7 预计算融合权重清单 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec7"><span class="sec-num">§7</span> 预计算融合权重清单</h2>
+
+<p>在模型加载（Model Loading）阶段，推理引擎需要预计算以下融合权重：</p>
+
+<table>
+  <tr><th>原始权重</th><th>融合公式</th><th>融合后维度</th><th>用途</th></tr>
+  <tr>
+    <td>$W_i^{UQ}, W^{DQ}$</td>
+    <td>$W_i^{Q\_fused} = W^{DQ} \cdot W_i^{UQ}$</td>
+    <td>$d \times d_h$</td>
+    <td>Decode Q 计算</td>
+  </tr>
+  <tr>
+    <td>$W_i^{UK}$</td>
+    <td>$\tilde{W}_i^{QK} = W_i^{UQ\top} \cdot (W_i^{UK})^\top$</td>
+    <td>$d_h \times d_c$</td>
+    <td>Q 吸收 K</td>
+  </tr>
+  <tr>
+    <td>$W_i^{UV}, W_i^O$</td>
+    <td>$W_i^{UV\_O} = W_i^{UV} \cdot W_i^O$</td>
+    <td>$d_c \times d$</td>
+    <td>V+O 吸收</td>
+  </tr>
+</table>
+
+<div class="callout callout-blue">
+  <strong>工程实践：</strong>这些预计算在模型加载时用几秒钟完成（只需做一次矩阵乘法），之后整个推理过程中无需再操作 $W^{UK}$ 和 $W^{UV}$。某些实现甚至会将原始的 $W^{UK}$ 和 $W^{UV}$ 从显存中释放，进一步节省空间。
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §8 MLA Decode 完整伪代码 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec8"><span class="sec-num">§8</span> MLA Decode 完整伪代码</h2>
+
+<pre><span style="color: #6b7280;"># ─── 模型加载时（一次性预计算） ───</span>
+<span style="color: var(--purple); font-weight: 600;">for</span> each head i:
+    W_QK_absorbed[i] = W_UQ[i].T @ W_UK[i].T   <span style="color: #6b7280;"># Q 吸收 K 的解压矩阵</span>
+    W_UVO[i]         = W_UV[i] @ W_O[i]         <span style="color: #6b7280;"># V 解压矩阵吸收 O 矩阵</span>
+
+<span style="color: #6b7280;"># ─── 每步 Decode ───</span>
+<span style="color: var(--purple); font-weight: 600;">def</span> <span style="color: var(--accent); font-weight: 600;">decode_step</span>(x_t, cache_C_KV, cache_K_rope):
+    <span style="color: #6b7280;">"""
+    x_t:          [1, d]      当前 token 的隐状态
+    cache_C_KV:   [L, d_c]    历史潜在向量 (512 维)
+    cache_K_rope: [L, d_r]    历史 RoPE Key (64 维)
+    """</span>
+    <span style="color: #6b7280;"># 1. Query 路径</span>
+    c_q = x_t @ W_DQ                              <span style="color: #6b7280;"># [1, d_c']</span>
+    q_rope = RoPE(x_t @ W_QR)                     <span style="color: #6b7280;"># [1, d_r]</span>
+
+    <span style="color: var(--purple); font-weight: 600;">for</span> each head i:
+        <span style="color: #6b7280;"># 2. Q 吸收：直接变换到潜在空间</span>
+        q_semantic = c_q @ W_QK_absorbed[i]        <span style="color: #6b7280;"># [1, d_c]  ← 不是 d_h！</span>
+
+        <span style="color: #6b7280;"># 3. Attention Score（在潜在空间计算）</span>
+        score_sem = q_semantic @ cache_C_KV.T      <span style="color: #6b7280;"># [1, L]  ← 读取极小 Cache</span>
+        score_pos = q_rope @ cache_K_rope.T        <span style="color: #6b7280;"># [1, L]</span>
+        score = (score_sem + score_pos) / sqrt(d_h + d_r)
+
+        <span style="color: #6b7280;"># 4. V 加权和（在潜在空间计算）</span>
+        alpha = softmax(score)                     <span style="color: #6b7280;"># [1, L]</span>
+        u_i = alpha @ cache_C_KV                   <span style="color: #6b7280;"># [1, d_c]  ← 再次读取小 Cache</span>
+
+        <span style="color: #6b7280;"># 5. V+O 吸收：直接从潜在空间映射到输出</span>
+        output_i = u_i @ W_UVO[i]                  <span style="color: #6b7280;"># [1, d]    ← 一步到位</span>
+
+    <span style="color: #6b7280;"># 6. 汇总所有头</span>
+    output = sum(output_i <span style="color: var(--purple); font-weight: 600;">for all</span> heads)
+    <span style="color: var(--purple); font-weight: 600;">return</span> output</pre>
+
+<div class="callout callout-blue">
+  <strong>对比 MHA Decode：</strong>在 MHA 中，步骤 3 需要读取 $\hat{K}_i \in \mathbb{R}^{L \times d_h}$（128 维 × $L$ 个 token × 128 个头），步骤 4 需要读取 $V_i \in \mathbb{R}^{L \times d_h}$。MLA 的步骤 3 和 4 都只读取 $C^{KV} \in \mathbb{R}^{L \times 512}$（共享，不分头）。
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- §9 数学保证 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<h2 id="sec9"><span class="sec-num">§9</span> 数学保证：Why It Works</h2>
+
+<h3>9.1 结合律的等价性</h3>
+
+<div class="formula">
+  $$(AB)C = A(BC)$$
+  <span class="formula-label">矩阵乘法结合律 — 线性代数基本定理</span>
+</div>
+
+<p>矩阵吸收<strong>不改变任何数值结果</strong>——只改变了计算顺序。这保证了 MLA Decode 的输出与"先解压再计算"的 naive 实现在数学上<strong>严格相等</strong>。</p>
+
+<h3>9.2 低秩假设的合理性</h3>
+
+<p>MLA 的 $C^{KV} = X W^{DKV}$ 构成一个 $d \to d_c$ 的线性瓶颈。根据 Eckart-Young 定理：</p>
+
+<div class="formula">
+  $$\left\| \hat{K} - C^{KV} W^{UK} \right\|_F^2 = \sum_{j > d_c} \sigma_j^2$$
+  <span class="formula-label">(8) Eckart-Young Theorem — 最优低秩近似误差</span>
+</div>
+
+<p>其中 $\sigma_j$ 是 KV 矩阵的第 $j$ 个奇异值。当 $\sigma_j$ 对 $j > d_c$ 迅速衰减到 $\approx 0$ 时，投影误差趋近于零。</p>
+
+<h3>9.3 端到端训练的自适应性</h3>
+
+<p>与固定的 SVD 截断不同，MLA 是<strong>端到端训练</strong>的。$W^{DKV}$ 和 $W^{UK}_i, W^{UV}_i$ 通过反向传播联合优化，使得模型<strong>自动学习</strong>最优的压缩-解压映射。即使 KV 矩阵的理论有效秩略大于 $d_c$，端到端训练也能通过放弃"对下游任务无贡献"的维度来适应瓶颈约束。</p>
+
+<hr>
+
+<!-- ── 一句话总结 ── -->
+
+<h2 style="border: none; margin-bottom: 10px;"><span class="sec-num">§</span> 一句话总结</h2>
+
+<table class="compare-table">
+  <tr>
+    <th></th>
+    <th class="col-mha">MHA</th>
+    <th class="col-mla">MLA</th>
+  </tr>
+  <tr>
+    <td><strong>KV Cache 存什么</strong></td>
+    <td class="col-mha">每个头的完整 K 和 V</td>
+    <td class="col-mla">一个共享的低维 $C^{KV}$</td>
+  </tr>
+  <tr>
+    <td><strong>Decode 时怎么读</strong></td>
+    <td class="col-mha">逐头读取大量高维 K/V</td>
+    <td class="col-mla">直接在潜在空间做点积和求和</td>
+  </tr>
+  <tr>
+    <td><strong>核心数学技巧</strong></td>
+    <td class="col-mha">无</td>
+    <td class="col-mla">结合律：$(qW^{UK\top})C^{KV\top}$</td>
+  </tr>
+  <tr>
+    <td><strong>瓶颈类型</strong></td>
+    <td class="col-mha">Memory Bandwidth Bound</td>
+    <td class="col-mla">Compute Bound（更容易并行）</td>
+  </tr>
+  <tr>
+    <td><strong>KV Cache 大小</strong></td>
+    <td class="col-mha">$O(n_h \cdot d_h \cdot L)$</td>
+    <td class="col-mla">$O(d_c \cdot L)$</td>
+  </tr>
+</table>
+
+<div class="key-box" style="margin-top: 24px;">
+  <div class="key-title">MLA 的设计哲学</div>
+  <p>不要在推理时做"解压"这种可以预计算的事情。通过数学上的结合律，<strong>把所有需要解压的工作转嫁到了模型的静态权重上</strong>（预计算一次，永久使用），从而让 Decode 阶段的内存 IO 降到理论最小值。</p>
+</div>
+
+<!-- ── References ── -->
+<hr>
+<h3>参考文献</h3>
+<ol style="font-size: 13px; color: var(--muted);">
+  <li>DeepSeek-AI. <em>DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model.</em> arXiv:2405.04434, 2024.</li>
+  <li>DeepSeek-AI. <em>DeepSeek-V3 Technical Report.</em> arXiv:2412.19437, 2024.</li>
+  <li>Vaswani, A. et al. <em>Attention Is All You Need.</em> NeurIPS 2017.</li>
+  <li>Shazeer, N. <em>Multi-Query Attention Is All You Need.</em> arXiv:1911.02150, 2019.</li>
+  <li>Ainslie, J. et al. <em>GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints.</em> EMNLP 2023.</li>
+  <li>Su, J. et al. <em>RoFormer: Enhanced Transformer with Rotary Position Embedding.</em> Neurocomputing, 2024.</li>
+</ol>
+
+<!-- ── Footer ── -->
+<div class="footer">
+  LLM Inference System Full-Stack Knowledge Base · MHA vs MLA Full Derivation · 2025
+</div>
+
+</body>
+</html>
