@@ -227,7 +227,7 @@
 | [`mha-vs-dsa-full-derivation.html`](notebooks/mha-vs-dsa-full-derivation.html) | **MHA vs DSA 全流程对比**：闪电索引器 + 稀疏 MLA + 3640× 带宽压缩 |
 | [`mha-vs-linear-attention-full-derivation.html`](notebooks/mha-vs-linear-attention-full-derivation.html) | **MHA vs 线性注意力全流程对比**：结合律 + RNN 等价 + 恒定 Cache |
 | [`attention-mechanisms-unified-comparison.html`](notebooks/attention-mechanisms-unified-comparison.html) | **五大注意力统一对比表**：MHA/GQA/MLA/DSA/Linear 全流程并排（彩色表格） |
-| [`kv_cache_pipeline.html`](notebooks/kv_cache_pipeline.html) | KV Cache 压缩流水线：H2O / StreamingLLM / SnapKV / Ada-KV / ACTA |
+
 
 ### Jupyter Notebook 实验
 
@@ -352,7 +352,7 @@ cd LLM-REVIEW
 # 浏览学术文档（浏览器直接打开）
 open notebooks/multi-head-divergence.html
 open notebooks/attention-evolution-and-inference.html
-open notebooks/kv_cache_pipeline.html
+
 
 # 运行代码实验
 pip install torch numpy
