@@ -114,7 +114,6 @@
 | [`attention-evolution-and-inference.md`](notes/attention/attention-evolution-and-inference.md) | 注意力机制演进全景（MHA→MQA→GQA→MLA→SSM）+ 端到端推理流程 |
 | [`mha-vs-mla-full-derivation.md`](notes/attention/mha-vs-mla-full-derivation.md) | **MHA vs MLA 全流程对比**：三次矩阵吸收推导、Decode 阶段带宽分析、伪代码 |
 | [`mha-vs-gqa-full-derivation.md`](notes/attention/mha-vs-gqa-full-derivation.md) | **MHA vs GQA 全流程对比**：分组共享 KV、SRAM 复用、Roofline 分析、GQA vs MLA 哲学 |
-
 | [`mha-vs-dsa-full-derivation.md`](notes/attention/mha-vs-dsa-full-derivation.md) | **MHA vs DSA 全流程对比**：闪电索引器、ReLU 替代 Softmax、序列×特征双重压缩 3640× |
 | [`mha-vs-linear-attention-full-derivation.md`](notes/attention/mha-vs-linear-attention-full-derivation.md) | **MHA vs 线性注意力全流程对比**：结合律消除 $L^2$、RNN 等价、状态压缩瓶颈、前沿变体 |
 | [`attention-mechanisms-unified-comparison.md`](notes/attention/attention-mechanisms-unified-comparison.md) | **五大注意力统一对比表**：MHA/GQA/MLA/DSA/Linear 全流程并排矩阵推导（Excel 风格） |
