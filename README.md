@@ -429,6 +429,28 @@ LLM-REVIEW/
 
 ---
 
+## Roadmap
+
+> 本仓库正在向更专业的形态演进。
+
+- **LaTeX 重写**：所有核心笔记将迁移至 LaTeX 排版，输出可引用的 PDF 文档（公式、表格、算法伪代码使用 `algorithm2e` / `booktabs` 等学术级排版）。
+- **独立在线站点**：计划基于 [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) 或 [VitePress](https://vitepress.dev/) 构建可全文搜索的静态文档站，支持 KaTeX 实时渲染、暗色模式、版本化发布，域名与部署方案待定。
+- **动画演示关键流程**：为以下核心机制制作可交互的动画 / 动图，嵌入在线站点与 Notebook：
+
+  | 动画主题 | 演示内容 | 技术方案 |
+  |----------|----------|----------|
+  | **KV Cache 生命周期** | Prefill 填充 → Decode 逐步追加 → PagedAttention 分页 → 驱逐回收 | Manim / D3.js |
+  | **MHA vs MLA 矩阵吸收** | Q/K/V 投影 → 潜空间压缩 → 吸收矩阵合并 → Decode 读取对比 | Manim |
+  | **Attention 热力图动态** | Token 逐步生成时 causal mask 扩展、注意力权重分布实时变化 | Matplotlib animation / Plotly |
+  | **LoRA 权重注入** | 原始权重冻结 → 低秩分解 A·B 旁路注入 → 推理时合并 | Manim |
+  | **GRPO 训练循环** | Rollout 采样 → Group 内打分 → 优势计算 → 策略更新 → 权重同步 | D3.js / React Flow |
+  | **Continuous Batching** | 请求到达 → 动态插入 batch → Prefill/Decode 交错 → 请求完成释放 slot | D3.js |
+  | **分布式并行策略** | TP 切分 Attention 头 → PP 流水线气泡 → EP 专家路由 All-to-All | Manim / Excalidraw animation |
+
+- **Notebook → Colab**：所有 `.ipynb` 将附带一键 Open in Colab 按钮，降低环境配置门槛。
+
+---
+
 <div align="center">
 
 **Built with** &nbsp;
