@@ -1,27 +1,38 @@
+<div align="center">
+
 # LLM-REVIEW
 
-> **LLM 推理系统全栈知识库** — 从数学公式到系统设计，从注意力机制到生产部署，系统性覆盖大模型推理工程师所需的全部知识图谱。
+**LLM 推理系统全栈知识库**
 
-本仓库以**数学公式驱动 + 代码可验证 + 面试实战导向**为核心理念，构建了一套完整的 LLM Inference 学习与备战体系。所有笔记均包含严格的公式推导、PyTorch 实现、以及带 KaTeX 渲染的交互式 HTML 文档。
+从数学公式到系统设计，从注意力机制到生产部署
+
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![CUDA](https://img.shields.io/badge/CUDA-12.x-76B900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/cuda-toolkit)
+[![License](https://img.shields.io/badge/License-Personal_Study-blue)](#license)
+
+</div>
 
 ---
+
+本仓库以**数学公式驱动 · 代码可验证 · 面试实战导向**为核心理念，构建了一套完整的 LLM Inference 学习与备战体系。所有笔记均包含严格的公式推导、PyTorch 实现、以及带 KaTeX 渲染的交互式 HTML 文档。
 
 ## 目录导航
 
 | 目录 | 定位 | 内容概览 |
 |------|------|----------|
-| [`math_dictionary/`](#-math_dictionary数学公式速查字典) | 公式速查 | 27 篇系统性公式手册，覆盖线代 → 注意力 → KV Cache → 分布式推理 |
-| [`notes/`](#-notes深度技术笔记) | 深度笔记 | 20+ 子主题，从 Transformer 架构到前沿模型的完整知识体系 |
-| [`notebooks/`](#-notebooks交互式文档与实验) | 交互文档 | Jupyter 实验 + KaTeX 渲染的学术级 HTML 展示 |
-| [`src/`](#-src核心代码实现) | 代码实现 | 注意力机制、KV Cache、LoRA 等核心模块的 PyTorch 实现 |
-| [`mock_interview/`](#-mock_interview模拟面试题库) | 面试实战 | 按主题 / 公司分类的系统设计与技术深挖题库 |
-| [`roadmap/`](#-roadmap学习路线) | 学习规划 | 12 周冲刺计划 + 45 天每日任务表 |
-| [`benchmarks/`](#-benchmarks评测与分析) | 评测分析 | 面试高频考点热力分析 + 周度自测模板 |
-| [`tests/`](#-tests单元测试) | 质量保障 | 注意力、KV Cache、LoRA、调度器的自动化测试 |
+| [`math_dictionary/`](#-math_dictionary--数学公式速查字典) | 公式速查 | 27 篇系统性公式手册，覆盖线代 → 注意力 → KV Cache → 分布式推理 |
+| [`notes/`](#-notes--深度技术笔记) | 深度笔记 | 20+ 子主题，从 Transformer 架构到前沿模型的完整知识体系 |
+| [`notebooks/`](#-notebooks--交互式文档与实验) | 交互文档 | Jupyter 实验 + KaTeX 渲染的学术级 HTML 展示 |
+| [`src/`](#-src--核心代码实现) | 代码实现 | 注意力机制、KV Cache、LoRA 等核心模块的 PyTorch 实现 |
+| [`mock_interview/`](#-mock_interview--模拟面试题库) | 面试实战 | 按主题 / 公司分类的系统设计与技术深挖题库 |
+| [`roadmap/`](#-roadmap--学习路线) | 学习规划 | 12 周冲刺计划 + 45 天每日任务表 |
+| [`benchmarks/`](#-benchmarks--评测与分析) | 评测分析 | 面试高频考点热力分析 + 周度自测模板 |
+| [`tests/`](#-tests--单元测试) | 质量保障 | 注意力、KV Cache、LoRA、调度器的自动化测试 |
 
 ---
 
-## 📐 `math_dictionary/`：数学公式速查字典
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/latex/latex-original.svg" width="20" /> `math_dictionary` · 数学公式速查字典
 
 > 27 篇公式手册，面试前 15 分钟快速回顾核心公式。
 
@@ -102,7 +113,7 @@
 
 ---
 
-## 📝 `notes/`：深度技术笔记
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/markdown/markdown-original.svg" width="20" /> `notes` · 深度技术笔记
 
 > 20+ 子主题的系统性深度笔记，每篇均包含原理推导、代码示例、面试问答。
 
@@ -123,7 +134,7 @@
 | [`mha-vs-mla-full-derivation.md`](notes/attention/mha-vs-mla-full-derivation.md) | **MHA vs MLA 全流程对比**：三次矩阵吸收推导、Decode 阶段带宽分析、伪代码 |
 | [`mha-vs-gqa-full-derivation.md`](notes/attention/mha-vs-gqa-full-derivation.md) | **MHA vs GQA 全流程对比**：分组共享 KV、SRAM 复用、Roofline 分析、GQA vs MLA 哲学 |
 | [`mha-vs-dsa-full-derivation.md`](notes/attention/mha-vs-dsa-full-derivation.md) | **MHA vs DSA 全流程对比**：闪电索引器、ReLU 替代 Softmax、序列×特征双重压缩 3640× |
-| [`mha-vs-linear-attention-full-derivation.md`](notes/attention/mha-vs-linear-attention-full-derivation.md) | **MHA vs 线性注意力全流程对比**：结合律消除 $L^2$、RNN 等价、状态压缩瓶颈、前沿变体 |
+| [`mha-vs-linear-attention-full-derivation.md`](notes/attention/mha-vs-linear-attention-full-derivation.md) | **MHA vs 线性注意力全流程对比**：结合律消除 L²、RNN 等价、状态压缩瓶颈、前沿变体 |
 | [`attention-mechanisms-unified-comparison.md`](notes/attention/attention-mechanisms-unified-comparison.md) | **五大注意力统一对比表**：MHA/GQA/MLA/DSA/Linear 全流程并排矩阵推导（Excel 风格） |
 | [`flashattention.md`](notes/attention/flashattention.md) | FlashAttention 原理与实现细节 |
 | [`linear-attention.md`](notes/attention/linear-attention.md) | 线性注意力机制（Mamba、RWKV） |
@@ -209,6 +220,16 @@
 | [`qwen-series.md`](notes/frontier/qwen-series.md) | Qwen 系列技术追踪 |
 | [`structured-output.md`](notes/frontier/structured-output.md) | 结构化输出（JSON Schema、Grammar Decoding） |
 
+### RL 系统优化 [`notes/rl-infra/`](notes/rl-infra/)
+
+| 文件 | 内容 |
+|------|------|
+| [`rl-training-inference-systems.md`](notes/rl-infra/rl-training-inference-systems.md) | **RL 训练/推理全链路优化**：Rollout 加速、权重同步、GRPO 系统设计、vLLM/SGLang/AReaL/Slime/Megatron 框架剖析 |
+| [`multi-lora-joint-training.md`](notes/rl-infra/multi-lora-joint-training.md) | **千级 Multi-LoRA 并行训练**：Batched GEMM / S-LoRA 原理、权重池管理、Joint Training 策略、资源调度系统设计 |
+| [`gpu-optimization-bottleneck-analysis.md`](notes/rl-infra/gpu-optimization-bottleneck-analysis.md) | **GPU 优化与瓶颈定位**：Roofline 模型、Profiling 工具链、Compute/Memory Bound 诊断、RL 特有稳定性优化 |
+| [`slime-deep-dive.md`](notes/rl-infra/slime-deep-dive.md) | **Slime 框架深度拆解**：异步流水线源码、Data Buffer、SGLang 集成、权重同步、staleness 分析、vs verl/AReaL 对比 |
+| [`hands-on-experiment-log.md`](notes/rl-infra/hands-on-experiment-log.md) | **实战 Demo 清单 & 试错日志**：13 个必跑 Demo（vLLM Multi-LoRA / SGLang Prefix / Slime 训练 / nsys Profiling）+ 踩坑速查 |
+
 ### 其他专题
 
 | 目录 | 内容 |
@@ -224,7 +245,7 @@
 
 ---
 
-## 📊 `notebooks/`：交互式文档与实验
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original-wordmark.svg" width="20" /> `notebooks` · 交互式文档与实验
 
 > Jupyter Notebook 动手实验 + KaTeX 渲染的学术级 HTML 文档，可直接在浏览器中查看。
 
@@ -240,11 +261,12 @@
 | [`mha-vs-linear-attention-full-derivation.html`](notebooks/mha-vs-linear-attention-full-derivation.html) | **MHA vs 线性注意力全流程对比**：结合律 + RNN 等价 + 恒定 Cache |
 | [`attention-mechanisms-unified-comparison.html`](notebooks/attention-mechanisms-unified-comparison.html) | **五大注意力统一对比表**：MHA/GQA/MLA/DSA/Linear 全流程并排（彩色表格） |
 
-
 ### Jupyter Notebook 实验
 
 | 文件 | 内容 |
 |------|------|
+| [`python_nn_pytorch_fundamentals_workshop.ipynb`](notebooks/python_nn_pytorch_fundamentals_workshop.ipynb) | **Python/NN/PyTorch 基础实战**：函数式编程、手写反向传播、Dataset/DataLoader、MLP 训练闭环、最小 next-token 训练 |
+| [`mini_transformer_from_scratch_workshop.ipynb`](notebooks/mini_transformer_from_scratch_workshop.ipynb) | **手写 Mini Transformer**：Causal Self-Attention、Decoder-only Block、next-token 训练、采样生成、注意力热力图 |
 | [`attention_tokenizer_beamsearch.ipynb`](notebooks/attention_tokenizer_beamsearch.ipynb) | 注意力计算、Tokenizer、Beam Search 手撕实现 |
 | [`llm_inference_fundamentals.ipynb`](notebooks/llm_inference_fundamentals.ipynb) | LLM 推理基础：Prefill/Decode、KV Cache 机制 |
 | [`kv_cache_paged_lru_workshop.ipynb`](notebooks/kv_cache_paged_lru_workshop.ipynb) | PagedAttention 与 LRU 驱逐策略实战 |
@@ -262,7 +284,7 @@
 
 ---
 
-## 💻 `src/`：核心代码实现
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg" width="20" /> `src` · 核心代码实现
 
 > 可运行的 PyTorch 代码，覆盖推理系统核心模块。
 
@@ -288,7 +310,7 @@ src/
 
 ---
 
-## 🎯 `mock_interview/`：模拟面试题库
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/readthedocs/readthedocs-original.svg" width="20" /> `mock_interview` · 模拟面试题库
 
 > 系统性整理的技术深挖与系统设计题库，按维度分类，附评分维度与追问链。
 
@@ -320,7 +342,7 @@ src/
 
 ---
 
-## 🗺️ `roadmap/`：学习路线
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg" width="20" /> `roadmap` · 学习路线
 
 | 文件 | 内容 |
 |------|------|
@@ -330,7 +352,7 @@ src/
 
 ---
 
-## 📈 `benchmarks/`：评测与分析
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/grafana/grafana-original.svg" width="20" /> `benchmarks` · 评测与分析
 
 | 文件 | 内容 |
 |------|------|
@@ -339,7 +361,7 @@ src/
 
 ---
 
-## 🧪 `tests/`：单元测试
+## <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytest/pytest-original.svg" width="20" /> `tests` · 单元测试
 
 ```bash
 # 运行全部测试
@@ -364,7 +386,6 @@ cd LLM-REVIEW
 # 浏览学术文档（浏览器直接打开）
 open notebooks/multi-head-divergence.html
 open notebooks/attention-evolution-and-inference.html
-
 
 # 运行代码实验
 pip install torch numpy
@@ -391,15 +412,16 @@ LLM-REVIEW/
 │   ├── inference/               ←   推理与解码策略
 │   ├── distributed/             ←   分布式推理（TP/PP/EP）
 │   ├── basics/                  ←   基础速通（Python、神经网络、PyTorch）
-│   ├── training/                ←   训练全栈（预训练Pipeline、PEFT对比、指令数据、微调框架、RLHF实战）
+│   ├── training/                ←   训练全栈（预训练 / PEFT / 指令数据 / 微调框架 / RLHF）
+│   ├── rl-infra/                ←   RL 系统优化（Slime / Multi-LoRA / GPU 优化）
 │   ├── frameworks/              ←   推理框架（vLLM、TRT-LLM、SGLang）
 │   ├── serving/                 ←   服务与运维
 │   ├── frontier/                ←   前沿模型追踪
-│   ├── multimodal/              ←   多模态（ViT/CLIP/LLaVA架构、训练流程、VLM推理）
-│   └── ...                      ←   CUDA、评测、系统设计等
+│   ├── multimodal/              ←   多模态（ViT/CLIP/LLaVA 架构、训练、VLM 推理）
+│   └── ...                      ←   CUDA、评测、系统设计、源码阅读等
 ├── notebooks/                   ← Jupyter 实验 + HTML 学术文档
 ├── src/                         ← PyTorch 核心实现
-├── mock_interview/              ← 面试题库（主题/公司/行为）
+├── mock_interview/              ← 面试题库（主题 / 公司 / 行为）
 ├── roadmap/                     ← 学习路线与计划
 ├── benchmarks/                  ← 考点分析与自测
 └── tests/                       ← 单元测试
@@ -407,6 +429,12 @@ LLM-REVIEW/
 
 ---
 
-## License
+<div align="center">
 
-This project is for personal study and interview preparation purposes.
+**Built with** &nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg" width="16" /> PyTorch &nbsp;·&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" width="16" /> Python &nbsp;·&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original-wordmark.svg" width="16" /> Jupyter &nbsp;·&nbsp;
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/numpy/numpy-original.svg" width="16" /> NumPy
+
+</div>

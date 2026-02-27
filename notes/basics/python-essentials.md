@@ -4,6 +4,14 @@
 
 ---
 
+## 学习建议（配套实战）
+
+- 配套 Notebook：`notebooks/python_nn_pytorch_fundamentals_workshop.ipynb`
+- 建议顺序：先看本篇的语法速查，再跑 Notebook 的 Part A，把每段代码改写一遍。
+- 建议目标：能独立写出流式数据读取、数据清洗模板、计时装饰器和并发调用骨架。
+
+---
+
 ## 一、函数式编程
 
 ### 1.1 高阶函数

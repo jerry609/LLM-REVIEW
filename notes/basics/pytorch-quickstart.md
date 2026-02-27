@@ -4,6 +4,14 @@
 
 ---
 
+## 学习建议（配套实战）
+
+- 配套 Notebook：`notebooks/python_nn_pytorch_fundamentals_workshop.ipynb`
+- 建议顺序：先看本篇 API 速查，再跑 Notebook 的 Part C / D / E，形成完整训练闭环。
+- 建议目标：能独立写出 `Dataset -> DataLoader -> Model -> Train -> Eval` 的最小可复用模板。
+
+---
+
 ## 一、Tensor 基础操作
 
 ### 1.1 创建 Tensor

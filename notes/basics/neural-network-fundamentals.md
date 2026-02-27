@@ -4,6 +4,14 @@
 
 ---
 
+## 学习建议（配套实战）
+
+- 配套 Notebook：`notebooks/python_nn_pytorch_fundamentals_workshop.ipynb`
+- 建议顺序：先看本篇理论，再跑 Notebook 的 Part B，重点观察 loss 曲线和梯度检查结果。
+- 建议目标：能手写两层网络的前向、反向、参数更新，并解释每个梯度项的物理意义。
+
+---
+
 ## 一、前向传播 (Forward Propagation)
 
 ### 1.1 单层线性变换
