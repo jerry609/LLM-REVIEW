@@ -25,6 +25,7 @@
 | [`notes/`](#-notes--深度技术笔记) | 深度笔记 | 20+ 子主题，从 Transformer 架构到前沿模型的完整知识体系 |
 | [`notebooks/`](#-notebooks--交互式文档与实验) | 交互文档 | Jupyter 实验 + KaTeX 渲染的学术级 HTML 展示 |
 | [`src/`](#-src--核心代码实现) | 代码实现 | 注意力机制、KV Cache、LoRA 等核心模块的 PyTorch 实现 |
+| [`notes/bitter-lessons/`](#-bitter-lessons--项目复现血泪录) | 血泪教训 | 复现项目过程中的踩坑记录、Bitter Lessons 提炼 |
 | [`mock_interview/`](#-mock_interview--模拟面试题库) | 面试实战 | 按主题 / 公司分类的系统设计与技术深挖题库 |
 | [`roadmap/`](#-roadmap--学习路线) | 学习规划 | 12 周冲刺计划 + 45 天每日任务表 |
 | [`benchmarks/`](#-benchmarks--评测与分析) | 评测分析 | 面试高频考点热力分析 + 周度自测模板 |
@@ -230,6 +231,14 @@
 | [`slime-deep-dive.md`](notes/rl-infra/slime-deep-dive.md) | **Slime 框架深度拆解**：异步流水线源码、Data Buffer、SGLang 集成、权重同步、staleness 分析、vs verl/AReaL 对比 |
 | [`hands-on-experiment-log.md`](notes/rl-infra/hands-on-experiment-log.md) | **实战 Demo 清单 & 试错日志**：13 个必跑 Demo（vLLM Multi-LoRA / SGLang Prefix / Slime 训练 / nsys Profiling）+ 踩坑速查 |
 
+### 🩸 Bitter Lessons [`notes/bitter-lessons/`](notes/bitter-lessons/)
+
+> 每一次复现失败，都比读十遍论文学到的多。
+
+| 文件 | 内容 |
+|------|------|
+| [`reproduction-log.md`](notes/bitter-lessons/reproduction-log.md) | **项目复现血泪录**：环境踩坑、训练收敛、推理部署、分布式系统中的认知颠覆与 Bitter Lessons 提炼 |
+
 ### 其他专题
 
 | 目录 | 内容 |
@@ -414,6 +423,7 @@ LLM-REVIEW/
 │   ├── basics/                  ←   基础速通（Python、神经网络、PyTorch）
 │   ├── training/                ←   训练全栈（预训练 / PEFT / 指令数据 / 微调框架 / RLHF）
 │   ├── rl-infra/                ←   RL 系统优化（Slime / Multi-LoRA / GPU 优化）
+│   ├── bitter-lessons/          ←   项目复现血泪录（Bitter Lessons）
 │   ├── frameworks/              ←   推理框架（vLLM、TRT-LLM、SGLang）
 │   ├── serving/                 ←   服务与运维
 │   ├── frontier/                ←   前沿模型追踪
