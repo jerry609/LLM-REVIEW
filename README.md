@@ -461,6 +461,14 @@ LLM-REVIEW/
 
 ---
 
+## 参考资源
+
+| 资源 | 说明 |
+|------|------|
+| [wyf3/llm_related](https://github.com/wyf3/llm_related) | 复现大模型相关算法及学习记录（GRPO/PPO/DAPO from scratch、知识蒸馏、MoE 训练、多模态等） |
+
+---
+
 <div align="center">
 
 **Built with** &nbsp;
