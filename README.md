@@ -466,6 +466,7 @@ LLM-REVIEW/
 | 资源 | 说明 |
 |------|------|
 | [wyf3/llm_related](https://github.com/wyf3/llm_related) | 复现大模型相关算法及学习记录（GRPO/PPO/DAPO from scratch、知识蒸馏、MoE 训练、多模态等） |
+| [CMU 17-445/645: ML in Production](https://mlip-cmu.github.io/f2025/) | CMU「机器学习生产化」课程——涵盖 MLOps、数据基础设施、模型部署与监控、负责任 AI、系统质量保证等全生命周期主题，附带百万用户级推荐系统大作业，[教材](https://mlip-cmu.github.io/book/) 与 [课件](https://github.com/mlip-cmu) 全部开源 |
 
 ---
 
