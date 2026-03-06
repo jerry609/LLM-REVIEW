@@ -70,10 +70,10 @@
 |------|------|
 | $\odot$ | 逐元素乘法（Hadamard Product） |
 | $\otimes$ | 外积（Outer Product） |
-| $\|\cdot\|_F$ | Frobenius 范数 |
-| $\|\cdot\|_*$ | 核范数（Nuclear Norm） |
+| $\lVert \cdot \rVert_F$ | Frobenius 范数 |
+| $\lVert \cdot \rVert_*$ | 核范数（Nuclear Norm） |
 | $\sigma(\cdot)$ | Sigmoid 函数 |
-| $\text{KL}(p \| q)$ | KL 散度 |
+| $\text{KL}(p \parallel q)$ | KL 散度 |
 | $H(p)$ | Shannon 熵 |
 | $\mathbb{E}[\cdot]$ | 期望 |
 | $\mathbb{1}[\cdot]$ | 指示函数 |

@@ -200,3 +200,39 @@ FlashDecoding 的改进思路：
 - 在 **KV 序列维度**上并行切分，而不是在 $Q$ 维度切分。
 - 每个线程块处理一段 KV Cache，最后再做一次 Online Softmax 的 reduce 合并。
 - 在长上下文场景下（$T_{\text{kv}} > 8K$），FlashDecoding 相比原始 FlashAttention 在 Decode 阶段可额外加速 $5$–$8\times$。
+---
+
+## 附：仓库源码对照
+
+本文对应的最小实现是 [../src/attention/flash_attn_sim.py](../src/attention/flash_attn_sim.py)。如果你想把 Online Softmax 的推导和代码逐句对上，推荐同时打开 [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md)。
+
+### 关键状态量的代码实现
+
+```python
+m_new = np.maximum(m_i, m_ij)
+alpha = np.exp(m_i - m_new)
+beta = np.exp(m_ij - m_new)
+l_new = alpha * l_i + beta * l_ij
+
+o_i = (alpha[:, None] * l_i[:, None] * o_i + (beta[:, None] * (p @ v_blk))) / l_new[:, None]
+m_i, l_i = m_new, l_new
+```
+
+它和上文的递推式严格对应：
+
+$$
+m_i^{\text{new}} = \max(m_i, m_{ij}),
+\qquad
+l_i^{\text{new}} = \alpha l_i + \beta l_{ij}
+$$
+
+$$
+o_i^{\text{new}} =
+\frac{\alpha l_i o_i + \beta (P_{ij}V_j)}{l_i^{\text{new}}}
+$$
+
+### 推荐联读顺序
+
+1. 先读本页第 4 节的 Online Softmax 推导。
+2. 再打开 [../src/attention/flash_attn_sim.py](../src/attention/flash_attn_sim.py) 看 `m_i`、`l_i`、`o_i` 如何更新。
+3. 最后回到 [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md) 看整条“公式 -> 代码”链路。

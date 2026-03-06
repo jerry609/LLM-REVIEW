@@ -160,3 +160,40 @@ $$
 
 **Top-p (Nucleus Sampling) 截断**：
 先按概率降序排列词表，累加概率直到超过阈值 $p$（例如 0.9），截断并丢弃剩余词，然后在保留的词集中重新做 Softmax 采样。
+---
+
+## 附：对应源码与阅读顺序
+
+如果你想把上面的公式直接映射到本仓库的最小实现，推荐按下面顺序看：
+
+1. [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md)：把张量形状、公式和代码逐行对齐。
+2. [../src/attention/mha_gqa.py](../src/attention/mha_gqa.py)：对应缩放点积注意力、GQA 分组共享与输出投影。
+3. [../src/attention/rope_rmsnorm.py](../src/attention/rope_rmsnorm.py)：对应 RoPE cache、旋转实现与 RMSNorm。
+
+### 关键代码片段：RMSNorm
+
+```python
+def rms_norm(x: np.ndarray, weight: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+    rms = np.sqrt(np.mean(x * x, axis=-1, keepdims=True) + eps)
+    return (x / rms) * weight
+```
+
+它正对应：
+
+$$
+\operatorname{RMS}(x) = \sqrt{\frac{1}{d}\sum_{i=1}^{d} x_i^2 + \epsilon},
+\qquad
+\operatorname{RMSNorm}(x) = \frac{x}{\operatorname{RMS}(x)} \odot w
+$$
+
+### 关键代码片段：RoPE cache
+
+```python
+idx = np.arange(0, head_dim, 2, dtype=np.float32)
+inv_freq = 1.0 / (theta ** (idx / head_dim))
+freqs = np.outer(pos, inv_freq)
+cos = np.repeat(np.cos(freqs), 2, axis=-1)
+sin = np.repeat(np.sin(freqs), 2, axis=-1)
+```
+
+这段代码对应位置编码中的相位表构造，建议再配合 [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md) 一起看。

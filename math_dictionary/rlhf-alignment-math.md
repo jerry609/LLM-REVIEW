@@ -52,19 +52,19 @@ $$
 ### 3.1 完整目标
 
 $$
-\boxed{J(\theta) = \mathbb{E}_{x \sim \mathcal{D}, \; y \sim \pi_\theta(\cdot|x)} \left[r_\phi(x, y)\right] - \beta \cdot \text{KL}\!\left(\pi_\theta \,\|\, \pi_{\text{ref}}\right)}
+\boxed{J(\theta) = \mathbb{E}_{x \sim \mathcal{D}, \; y \sim \pi_\theta(\cdot|x)} \left[r_\phi(x, y)\right] - \beta \cdot \text{KL}\!\left(\pi_\theta \,\parallel\, \pi_{\text{ref}}\right)}
 $$
 
 | 项 | 含义 |
 |----|------|
 | $\mathbb{E}[r_\phi(x, y)]$ | 最大化奖励（让模型生成高分回答） |
-| $\beta \cdot \text{KL}(\pi_\theta \| \pi_{\text{ref}})$ | KL 惩罚项（防止策略偏离参考模型太远） |
+| $\beta \cdot \text{KL}(\pi_\theta \parallel \pi_{\text{ref}})$ | KL 惩罚项（防止策略偏离参考模型太远） |
 | $\pi_{\text{ref}}$ | 参考策略（通常是 SFT 模型） |
 
 ### 3.2 KL 散度展开
 
 $$
-\text{KL}(\pi_\theta \| \pi_{\text{ref}}) = \mathbb{E}_{y \sim \pi_\theta} \left[\log \frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)}\right]
+\text{KL}(\pi_\theta \parallel \pi_{\text{ref}}) = \mathbb{E}_{y \sim \pi_\theta} \left[\log \frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)}\right]
 $$
 
 ### 3.3 $\beta$ 的权衡

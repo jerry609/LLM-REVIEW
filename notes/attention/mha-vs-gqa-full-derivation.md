@@ -406,3 +406,60 @@ $$\text{Max Batch}_{\text{GQA}} = G \times \text{Max Batch}_{\text{MHA}} = 4 \ti
 4. Touvron, H. et al. *LLaMA 2: Open Foundation and Fine-Tuned Chat Models.* arXiv:2307.09288, 2023.
 5. DeepSeek-AI. *DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model.* arXiv:2405.04434, 2024.
 6. Su, J. et al. *RoFormer: Enhanced Transformer with Rotary Position Embedding.* Neurocomputing, 2024.
+
+---
+
+## 附：仓库最小实现对照
+
+本文在仓库中的最小实现对应 [../../src/attention/mha_gqa.py](../../src/attention/mha_gqa.py)。如果你想把本页的推导和实际代码逐行对齐，建议再配合 [formula-to-code-walkthrough.md](formula-to-code-walkthrough.md) 一起看。
+
+### 1. 投影与分头
+
+```python
+q = x @ w_q
+k = x @ w_k
+v = x @ w_v
+
+qh = _split_heads(q, num_heads)
+kh = _split_heads(k, num_kv_heads)
+vh = _split_heads(v, num_kv_heads)
+```
+
+这对应前文的：
+
+$$
+Q = XW_Q, \qquad K = XW_K, \qquad V = XW_V
+$$
+
+以及从 `[B, T, D]` 到 `[B, H, T, d_h]` 的 reshape / transpose。
+
+### 2. GQA 的分组共享
+
+```python
+group_size = num_heads // num_kv_heads
+if group_size > 1:
+    kh = np.repeat(kh, repeats=group_size, axis=1)
+    vh = np.repeat(vh, repeats=group_size, axis=1)
+```
+
+它正对应：
+
+$$
+G = \frac{n_h}{n_g},
+\qquad
+K'_h = K_{\lceil h / G \rceil},
+\qquad
+V'_h = V_{\lceil h / G \rceil}
+$$
+
+也就是“逻辑上广播 KV，物理上只存更少的 KV 头”。
+
+### 3. 计算复杂度不变，但带宽压力变小
+
+```python
+out = _scaled_dot_product_attention(qh, kh, vh, mask=mask)
+out = _merge_heads(out)
+return out @ w_o
+```
+
+GQA 没有改变 attention 的数学定义，改变的是 KV Cache 的物理尺寸，因此训练 / prefill 的主公式基本不变，decode 阶段的 HBM 读取量会按 $n_g / n_h$ 缩小。这也是为什么工程收益主要出现在长上下文 decode。

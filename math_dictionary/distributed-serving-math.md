@@ -24,10 +24,28 @@ $$
 \boxed{T_{\text{comm}} = \alpha + \beta \times n_{\text{bytes}}}
 $$
 
-| 参数 | 含义 | NVLink (同机) | IB (跨机) | PCIe |
-|------|------|:------------:|:---------:|:----:|
-| $\alpha$ | 启动延迟 | $\sim 1 \mu$s | $\sim 10$–$50 \mu$s | $\sim 5 \mu$s |
-| $\beta$ | 每字节传输时间 | $\sim 0.0011 \mu$s/B (900 GB/s) | $\sim 0.02 \mu$s/B (50 GB/s) | $\sim 0.03 \mu$s/B |
+典型量级可以直接记成：
+
+- **$\alpha$（启动延迟）**：NVLink 约 $1\ \mu\mathrm{s}$，IB 跨机约 $10$ 到 $50\ \mu\mathrm{s}$，PCIe 约 $5\ \mu\mathrm{s}$。
+- **$\beta$（每字节传输时间）**：NVLink 约 $0.0011\ \mu\mathrm{s}/\mathrm{B}$（约 $900\ \mathrm{GB/s}$），IB 约 $0.02\ \mu\mathrm{s}/\mathrm{B}$（约 $50\ \mathrm{GB/s}$），PCIe 约 $0.03\ \mu\mathrm{s}/\mathrm{B}$。
+
+如果想把它写成更适合推导的形式，可以分别表示为：
+
+$$
+\alpha_{\mathrm{NVLink}} \approx 1\ \mu\mathrm{s},
+\qquad
+\alpha_{\mathrm{IB}} \approx 10\text{--}50\ \mu\mathrm{s},
+\qquad
+\alpha_{\mathrm{PCIe}} \approx 5\ \mu\mathrm{s}
+$$
+
+$$
+\beta_{\mathrm{NVLink}} \approx 0.0011\ \mu\mathrm{s}/\mathrm{B},
+\qquad
+\beta_{\mathrm{IB}} \approx 0.02\ \mu\mathrm{s}/\mathrm{B},
+\qquad
+\beta_{\mathrm{PCIe}} \approx 0.03\ \mu\mathrm{s}/\mathrm{B}
+$$
 
 **关键结论**：
 - **小消息**（Decode，$T=1$）：受 $\alpha$ 主导，多卡反而可能更慢。

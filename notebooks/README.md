@@ -1,6 +1,6 @@
 # 交互式文档与实验
 
-> 这部分包含两类内容：可直接阅读的 HTML 学术文档，以及适合本地或 Colab 打开的 notebook 源文件。
+> 这里同时包含两类内容：适合直接在线阅读的 HTML 讲解稿，以及适合在本地 / Colab 中运行的 notebook 源文件。为了更适合 GitBook 阅读，本页按“先看什么最值”重新排了顺序。
 
 ## 推荐先读的 HTML 文档
 
@@ -23,7 +23,7 @@
 - [投机解码模拟器](speculative_decoding_simulator.ipynb)
 - [分布式 Roofline 分析](distributed_inference_roofline.ipynb)
 - [PPO / GRPO 实现](rl_ppo_grpo_implementation.ipynb)
-- [GRPO 训练流程](grpo_training.ipynb)
+- [GRPO 训练流程图](grpo_training.png)
 - [推理模型 Workshop](reasoning_models_workshop.ipynb)
 - [RAG Prefix Caching 模拟](rag_prefix_caching_simulator.ipynb)
 - [vLLM 架构走读](vllm_architecture_walkthrough.ipynb)
@@ -31,8 +31,9 @@
 - [大海捞针评测](needle_in_haystack_demo.ipynb)
 - [LLM 系统相关算法题](leetcode_llm_system_related.ipynb)
 
-## GitBook 阅读说明
+## GitBook 阅读建议
 
-- HTML 导出页更适合直接在线阅读。
-- `.ipynb` 更适合在本地 Jupyter 或 Colab 中打开。
-- From Scratch 相关实验入口见 [from_scratch/README.md](from_scratch/README.md)。
+- HTML 导出页更适合直接在线阅读，公式和版式也更稳定。
+- `.ipynb` 更适合在本地 Jupyter 或 Colab 中运行和修改。
+- 如果你想把 notebook 里的结论和仓库实现对上，先看 [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md)。
+- From Scratch 相关实验入口见 [../src/from_scratch/README.md](../src/from_scratch/README.md)。

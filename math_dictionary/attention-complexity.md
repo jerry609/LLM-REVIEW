@@ -146,10 +146,24 @@ $$
 
 ### 3.2 硬件理论拐点 (以 NVIDIA A100/H100 为例)
 
-| 硬件 | 峰值算力 (BF16 Tensor Core) | 峰值显存带宽 (HBM) | 拐点算术强度 (Ridge Point) |
-|------|---------------------------|------------------|--------------------------|
-| **A100 80GB** | $\approx 312 \text{ TFLOPS}$ | $\approx 2.0 \text{ TB/s}$ | $\frac{312 \times 10^{12}}{2.0 \times 10^{12}} = \mathbf{156 \text{ FLOPs/Byte}}$ |
-| **H100 80GB** | $\approx 990 \text{ TFLOPS}$ | $\approx 3.35 \text{ TB/s}$ | $\frac{990 \times 10^{12}}{3.35 \times 10^{12}} = \mathbf{295 \text{ FLOPs/Byte}}$ |
+先记住两个近似结论：
+
+- **A100 80GB**：峰值算力约 $312$ TFLOPS，峰值显存带宽约 $2.0$ TB/s，对应 Ridge Point 约 $156$ FLOPs/Byte。
+- **H100 80GB**：峰值算力约 $990$ TFLOPS，峰值显存带宽约 $3.35$ TB/s，对应 Ridge Point 约 $295$ FLOPs/Byte。
+
+对应计算过程分别是：
+
+$$
+\operatorname{RidgePoint}_{\mathrm{A100}}
+= \frac{312 \times 10^{12}}{2.0 \times 10^{12}}
+\approx 156\ \mathrm{FLOPs/Byte}
+$$
+
+$$
+\operatorname{RidgePoint}_{\mathrm{H100}}
+= \frac{990 \times 10^{12}}{3.35 \times 10^{12}}
+\approx 295\ \mathrm{FLOPs/Byte}
+$$
 
 如果当前计算的 $\text{AI} > \text{Ridge Point}$，则是**算力受限 (Compute-bound)**；反之则是**带宽受限 (Memory-bound)**。
 

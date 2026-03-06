@@ -84,7 +84,7 @@ $$
 |------|------|------|
 | $p_n$ | $\frac{\sum_{\text{n-gram}} \min(\text{count}_{\text{hyp}}, \text{count}_{\text{ref}})}{\sum_{\text{n-gram}} \text{count}_{\text{hyp}}}$ | 修正的 N-gram Precision |
 | $w_n$ | 通常 $1/N$（均匀权重） | N-gram 权重 |
-| BP | $\min\!\left(1, \exp\!\left(1 - \frac{|\text{ref}|}{|\text{hyp}|}\right)\right)$ | Brevity Penalty（短句惩罚） |
+| BP | $\min\!\left(1, \exp\!\left(1 - \frac{\lvert \text{ref} \rvert}{\lvert \text{hyp} \rvert}\right)\right)$ | Brevity Penalty（短句惩罚） |
 
 **局限**：基于 N-gram 匹配，不考虑语义相似性。
 
