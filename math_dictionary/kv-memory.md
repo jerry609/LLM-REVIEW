@@ -221,3 +221,12 @@ $$
 ## 面试一句话
 
 > "KV 容量规划是线性账本：$2 \times L \times H_{\text{KV}} \times d_{\text{head}} \times s \times \sum T_i$。GQA 省 $H/H_{\text{KV}}$ 倍，量化再省 $s_{\text{old}}/s_{\text{new}}$ 倍，最后用 PagedAttention 消除碎片。"
+
+---
+
+## 对应源码与阅读顺序
+
+- 先读 [../notes/kv-cache/formula-to-code-walkthrough.md](../notes/kv-cache/formula-to-code-walkthrough.md)，把 `bytes_per_token -> block 数 -> Copy-on-Write -> 量化/驱逐` 串成一条线。
+- 再对照 [../src/kv_cache/core.py](../src/kv_cache/core.py) 的 `_blocks_needed()`、`allocate_for_sequence()`、`append_tokens()`、`fork()`，把容量公式映射到 block allocator。
+- 如果你想继续往“压缩”和“预算管理”延伸，再读 [../src/kv_cache/compression/quantizer.py](../src/kv_cache/compression/quantizer.py) 和 [../src/kv_cache/eviction/policies.py](../src/kv_cache/eviction/policies.py)。
+- 最后跑 `python -m pytest tests/test_kv_cache.py -v`，确认这些容量和生命周期假设在代码里是成立的。

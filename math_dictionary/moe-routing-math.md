@@ -213,3 +213,12 @@ $$
 ## 面试一句话
 
 > "MoE 用稀疏激活换算力效率：总参数大但每 token 只用 $E_{\text{active}} / E$ 的 FFN。关键挑战是负载均衡（辅助损失 $E \sum f_i P_i$）和 All-to-All 通信（$\propto BTd$）。Capacity Factor 控制精度-效率权衡，Drop Rate 高于 $5\%$ 则需要调参。"
+
+---
+
+## 对应源码与阅读顺序
+
+- 先读 [../notes/distributed/moe-formula-to-code-walkthrough.md](../notes/distributed/moe-formula-to-code-walkthrough.md)，把 softmax、top-k、capacity、drop rate、All-to-All 串成完整链路。
+- 再对照 [../src/simulators/moe_routing.py](../src/simulators/moe_routing.py) 的 `topk_route()`、`load_balancing_loss()`、`expert_capacity()`、`dispatch_to_experts()`、`all_to_all_bytes()`。
+- 如果你想从单机路由继续扩展到系统部署，再读 [../notes/distributed/moe-ep.md](../notes/distributed/moe-ep.md) 和 [../notes/distributed/moe-inference-deep.md](../notes/distributed/moe-inference-deep.md)。
+- 最后跑 `python -m pytest tests/test_moe_routing.py -v`，确认路由、容量和通信量的最小实现是自洽的。

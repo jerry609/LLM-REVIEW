@@ -177,3 +177,12 @@ $$
 ## 面试一句话
 
 > "推理指标必须分层看：延迟看 TTFT + TPOT + P99，吞吐看 Goodput（不是裸吞吐），资源看 KV 利用率和 Batch 利用率，诊断看 Refill Rate 和 Queue Depth。单一指标好不代表系统好，指标之间的推导关系（Little 定律、Roofline）才是面试核心。"
+
+---
+
+## 对应源码与阅读顺序
+
+- 先读 [../notes/serving/formula-to-code-walkthrough.md](../notes/serving/formula-to-code-walkthrough.md)，把 TTFT、TPOT、Goodput、batch utilization 的定义和调度器行为对上。
+- 再对照 [../src/simulators/serving_metrics.py](../src/simulators/serving_metrics.py) 的 `ttft()`、`tpot()`、`goodput()`、`batch_utilization()`、`kv_step_bytes()`，确认每个指标都是逐公式实现。
+- 然后读 [../src/simulators/scheduler.py](../src/simulators/scheduler.py) 的 `Request.stage()` 和 `step()`，理解 decode 优先为何会同时影响 TTFT 和 TPOT。
+- 最后跑 `python -m pytest tests/test_serving_metrics.py tests/test_scheduler.py -v`，把指标和调度逻辑一起验证。
