@@ -19,10 +19,37 @@
 
 ## 2. 标准注意力的 IO 致命伤
 
-标准注意力的计算分三步：
-1. 计算注意力分数 $S = QK^\top \in \mathbb{R}^{T \times T}$ → 写回 HBM
-2. 计算 Softmax $P = \text{softmax}(S) \in \mathbb{R}^{T \times T}$ → 读出 $S$，写回 $P$
-3. 计算输出 $O = PV \in \mathbb{R}^{T \times d}$ → 读出 $P, V$
+标准注意力的问题不在于公式本身，而在于中间矩阵太大，必须不断回写 HBM。
+
+### 2.1 写出分数矩阵
+
+先计算：
+
+$$
+S = QK^\top \in \mathbb{R}^{T \times T}
+$$
+
+这个分数矩阵通常要先写回 HBM。
+
+### 2.2 执行 Softmax
+
+再计算：
+
+$$
+P = \text{softmax}(S) \in \mathbb{R}^{T \times T}
+$$
+
+这一步需要把 $S$ 从 HBM 再读出来，并把 $P$ 写回去。
+
+### 2.3 乘回 Value
+
+最后计算：
+
+$$
+O = PV \in \mathbb{R}^{T \times d}
+$$
+
+这一步还要继续读取 $P$ 和 $V$。
 
 中间矩阵 $S$ 和 $P$ 都是 $T \times T$ 的巨大矩阵。以 $T = 8192, d = 128$ 为例：
 
@@ -30,7 +57,8 @@ $$
 \text{中间矩阵大小} = T^2 = 67,108,864 \text{ 个元素} \approx 128 \text{ MB (FP16)}
 $$
 
-**总 HBM IO 复杂度**：
+总 HBM IO 复杂度：
+
 $$
 \text{IO}_{\text{standard}} = \mathcal{O}(T^2 + T \cdot d) = \mathcal{O}(T^2) \quad (\text{因为通常 } T \gg d)
 $$
@@ -43,9 +71,13 @@ $$
 
 FlashAttention 的核心思想是：**永远不把 $T \times T$ 的中间矩阵写入 HBM**。
 
+### 3.1 如何切块
+
 将 $Q, K, V$ 分别按行切分为大小为 $B_r$（行块）和 $B_c$（列块）的小块：
 
 **外循环**遍历 $K, V$ 的列块 $(K_j, V_j)$；**内循环**遍历 $Q$ 的行块 $(Q_i)$：
+
+### 3.2 局部得分矩阵
 
 $$
 S_{ij} = Q_i K_j^\top \in \mathbb{R}^{B_r \times B_c}
@@ -125,10 +157,17 @@ $$
 
 > Dao, "FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning", 2023
 
-核心改进：
-1. **循环顺序调换**：外循环遍历 $Q$ 块，内循环遍历 $K, V$ 块。这使得输出 $O_i$ 在内循环中原地累加，减少了 HBM 写入次数。
-2. **更好的 Warp 分工**：将工作在不同 Warp 之间按行分配（而非按列），减少了 Warp 间的同步和共享内存的 bank conflict。
-3. **减少非矩阵乘法操作**：将 Softmax 的 rescale 操作延迟到最后统一执行。
+### 6.1 循环顺序调换
+
+外循环遍历 $Q$ 块，内循环遍历 $K, V$ 块。这使得输出 $O_i$ 在内循环中原地累加，减少了 HBM 写入次数。
+
+### 6.2 更好的 Warp 分工
+
+将工作在不同 Warp 之间按行分配，而不是按列分配，从而减少 Warp 间同步和共享内存 bank conflict。
+
+### 6.3 减少非矩阵乘法操作
+
+将 Softmax 的 rescale 操作延迟到最后统一执行，减少非 GEMM 部分的额外开销。
 
 **效果**：在 A100 上达到理论峰值 TFLOPS 的 **50%–73%**（FA-1 为 25%–40%）。
 
@@ -138,10 +177,17 @@ $$
 
 > Shah et al., "FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision", 2024
 
-针对 H100 (Hopper 架构) 的三大优化：
-1. **异步数据加载 (TMA)**：利用 Tensor Memory Accelerator 实现计算与 HBM→SRAM 数据搬运的**完全重叠**。
-2. **FP8 低精度计算**：在 Tensor Core 上使用 FP8 进行矩阵乘法，并通过**非连贯处理（Incoherent Processing）**技巧控制量化误差。
-3. **Warp 专业化**：将 Warp 分为 Producer（负责搬数据）和 Consumer（负责算矩阵乘），形成流水线。
+### 7.1 异步数据加载 (TMA)
+
+利用 Tensor Memory Accelerator 让计算与 HBM 到 SRAM 的搬运尽量重叠。
+
+### 7.2 FP8 低精度计算
+
+在 Tensor Core 上使用 FP8 进行矩阵乘法，并通过非连贯处理控制量化误差。
+
+### 7.3 Warp 专业化
+
+将 Warp 分为 Producer 和 Consumer，形成更清晰的流水线并发。
 
 ---
 
@@ -149,7 +195,8 @@ $$
 
 FlashAttention 主要加速的是 **Prefill 阶段**（$Q$ 矩阵很大）。在 Decode 阶段，$Q$ 只有 1 个 token（$T_q = 1$），此时并行度不在 $T_q$ 维度而在 $T_{\text{kv}}$ 维度。
 
-**FlashDecoding** 的改进思路：
-- 在 **KV 序列维度**上并行切分（而非 $Q$ 维度），每个线程块处理一段 KV Cache。
-- 最后对各块的 partial output 做一次 Online Softmax 的 reduce 合并。
+FlashDecoding 的改进思路：
+
+- 在 **KV 序列维度**上并行切分，而不是在 $Q$ 维度切分。
+- 每个线程块处理一段 KV Cache，最后再做一次 Online Softmax 的 reduce 合并。
 - 在长上下文场景下（$T_{\text{kv}} > 8K$），FlashDecoding 相比原始 FlashAttention 在 Decode 阶段可额外加速 $5$–$8\times$。

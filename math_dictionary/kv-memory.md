@@ -166,18 +166,55 @@ $$
 \text{有效显存放大率} = \frac{T_{\max}}{\bar{T}} = \frac{8192}{2048} = 4\times
 $$
 
-即 PagedAttention 可以让最大并发提升约 **4 倍**（在平均序列长度远小于最大长度时）。
+结论：当平均序列长度远小于最大长度时，PagedAttention 可以让最大并发提升约 **4 倍**。
 
 ---
 
 ## 6. 规划流程（工程 Checklist）
 
-1. **计算静态占用**：$M_{\text{weights}} = N \times s$，加上激活缓冲和系统预留。
-2. **确定 KV 预算**：$M_{\text{KV\_budget}} = M_{\text{GPU}} - M_{\text{static}}$。
-3. **选择精度策略**：根据质量门槛确定 KV Cache 精度 ($s$)。
-4. **反推并发能力**：$\text{max\_concurrent} = M_{\text{KV\_budget}} / (\text{bytes\_per\_token} \times \bar{T})$。
-5. **决定压缩 vs 驱逐**：若并发不够 → 先量化（50%–75% 压缩），再考虑驱逐策略。
-6. **设置安全边际**：预留 $10\%$–$20\%$ 应对突发长序列。
+### 6.1 计算静态占用
+
+先计算：
+
+$$
+M_{\text{static}} = M_{\text{weights}} + M_{\text{act}} + M_{\text{overhead}}
+$$
+
+其中 $M_{\text{weights}} = N \times s$，再加上激活缓冲和系统预留。
+
+### 6.2 确定 KV 预算
+
+$$
+M_{\text{KV\_budget}} = M_{\text{GPU}} - M_{\text{static}}
+$$
+
+这一步给出真正可用于 KV Cache 的显存空间。
+
+### 6.3 选择精度策略
+
+根据质量门槛选择 KV Cache 精度，也就是确定 $s$ 的取值。
+
+- 如果质量优先，优先 BF16 或 FP8。
+- 如果并发优先，可考虑 INT8、INT4，甚至更激进的 KIVI 类方案。
+
+### 6.4 反推最大并发
+
+$$
+	ext{max\_concurrent} = \frac{M_{\text{KV\_budget}}}{\text{bytes\_per\_token} \times \bar{T}}
+$$
+
+这里 $\bar{T}$ 是平均有效序列长度，而不是理论最大长度。
+
+### 6.5 决定压缩还是驱逐
+
+如果反推出的并发能力不够，通常先做量化压缩，再考虑驱逐策略。
+
+- 量化通常先带来 $50\%$ 到 $75\%$ 的直接压缩收益。
+- 驱逐会影响上下文保留质量，应该放在量化之后评估。
+
+### 6.6 设置安全边际
+
+最后预留 $10\%$ 到 $20\%$ 的安全边际，用来覆盖突发长序列、显存碎片和运行时波动。
 
 ---
 

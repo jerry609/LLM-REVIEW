@@ -41,19 +41,26 @@ $$
 
 将每层的权重矩阵沿列（或行）切分到 $P$ 张卡上：
 
-**Attention 层**：$W_Q, W_K, W_V$ 按**列切分**（各卡计算不同 Head），$W_O$ 按**行切分**。
-**FFN 层**（SwiGLU）：$W_{\text{gate}}, W_{\text{up}}$ 按**列切分**，$W_{\text{down}}$ 按**行切分**。
+#### Attention 层
+
+$W_Q, W_K, W_V$ 按列切分，各卡计算不同 Head；$W_O$ 按行切分。
+
+#### FFN 层
+
+对于 SwiGLU，$W_{\text{gate}}, W_{\text{up}}$ 按列切分，$W_{\text{down}}$ 按行切分。
 
 每层需要 **2 次 All-Reduce**（Attention 后一次，FFN 后一次）。
 
 ### 3.2 All-Reduce 通信量
 
-Ring All-Reduce 的通信量：
+Ring All-Reduce 的延迟近似为：
+
 $$
 T_{\text{AR}} \approx 2 \cdot \frac{P-1}{P} \cdot (\alpha + \beta \cdot n_{\text{bytes}})
 $$
 
-每次 All-Reduce 的数据量：
+每次 All-Reduce 的数据量为：
+
 $$
 n_{\text{bytes}} = B \times T \times d_{\text{model}} \times s
 $$
@@ -133,11 +140,18 @@ $$
 
 ### 5.2 All-to-All 通信
 
-每个 MoE 层需要 **2 次 All-to-All**：
-1. **Dispatch**：每张卡将 token 路由到持有目标 Expert 的卡。
-2. **Combine**：Expert 计算完成后将结果返回原始卡。
+每个 MoE 层需要 2 次 All-to-All。
+
+#### Dispatch
+
+每张卡将 token 路由到持有目标 Expert 的卡。
+
+#### Combine
+
+Expert 计算完成后再将结果返回原始卡。
 
 每次 All-to-All 的数据量（最坏情况）：
+
 $$
 n_{\text{bytes\_A2A}} = B \times T \times d_{\text{model}} \times s
 $$
@@ -162,7 +176,8 @@ $$
 M_{\text{migrate}} = \text{bytes\_per\_token} \times T_{\text{cache}}
 $$
 
-**迁移决策准则**：
+迁移决策准则：
+
 $$
 \text{Benefit}_{\text{reuse}} > T_{\text{comm}} + T_{\text{reindex}}
 $$
@@ -196,6 +211,7 @@ $$
 ### 8.2 预测负载
 
 考虑已有请求的剩余生成长度：
+
 $$
 \text{EstimatedLoad}(j) = \sum_{\text{req} \in j} \text{RemainingTokens}_{\text{req}} \times \text{TPOT}
 $$
