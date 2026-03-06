@@ -1,199 +1,171 @@
-# KV 驱逐策略数学建模详解
+# KV Eviction：从 LRU / LFU 到公平配额
 
-> **核心定位**：系统性梳理 KV Cache 驱逐（Eviction）策略的数学框架——从经典 LRU/LFU 基线，到注意力感知的 H2O / StreamingLLM / SnapKV / Ada-KV 等方法，再到多租户场景下的公平性约束与命中率优化理论。每种策略均给出精确的重要性评分公式和驱逐判定规则。
+> 这页关心的不是“缓存策略大全”，而是线上真正会触发的那个瞬间：新 token 还要继续写入，但 block 预算已经不够了，系统到底该回收谁、为什么先回收它、回收之后又会付出什么代价。读完这页，你应该能把驱逐问题直接翻译成可执行的评分函数和配额规则。
 
----
+## 1. 先把驱逐问题写成预算约束
 
-## 1. 问题定义
-
-KV Cache 的总容量为 $C$（以 token 数为单位），但序列在不断增长。当已存储的 token 数 $T > C$ 时，系统必须选择**驱逐**一部分 token 的 KV 表示，以腾出空间。
-
-**驱逐目标的三元优化**：
-$$
-\min_{\text{eviction policy}} \left( \underbrace{\text{Miss Rate}}_{\text{命中率}} + \lambda_1 \cdot \underbrace{\text{Recompute Cost}}_{\text{重算成本}} + \lambda_2 \cdot \underbrace{\text{Unfairness}}_{\text{多租户公平性}} \right)
-$$
-
----
-
-## 2. 经典缓存策略基线
-
-### 2.1 LRU (Least Recently Used)
+当新请求进入，或者已有序列继续追加 token 时，系统需要先看 block 预算是否会溢出。最常用的写法是：
 
 $$
-\text{Score}_{\text{LRU}}(i) = t_{\text{current}} - t_{\text{last\_access}}(i)
+\text{overflow\_blocks} = \max\!\left(0, \text{used\_blocks} + \Delta b - \text{budget\_blocks}\right)
 $$
 
-驱逐分数最高（最久未访问）的 token。
-- **时间复杂度**：$\mathcal{O}(1)$（双向链表 + 哈希表）。
-- **缺陷**：完全不考虑 token 的内容重要性。
+只要这项大于零，系统就必须做一件事：从当前缓存里选出若干 victim，把它们的 block 释放掉。
 
-### 2.2 LFU (Least Frequently Used)
+这一步和压缩不同。压缩是在“尽量继续保留信息”的前提下，把表示变便宜；驱逐则是在预算已经顶到墙的时候，明确地决定“谁要先被请出去”。
 
-$$
-\text{Score}_{\text{LFU}}(i) = \sum_{t=1}^{T_{\text{current}}} \mathbb{1}[\text{token } i \text{ 被访问于 step } t]
-$$
+## 2. 一个更接近工程现实的目标函数
 
-驱逐历史访问频次最低的 token。
-- **缺陷**：对突发模式响应慢；历史高频但已失去价值的 token 难以驱逐。
-
----
-
-## 3. 注意力感知驱逐策略
-
-### 3.1 H2O (Heavy-Hitter Oracle)
-
-> **出处**：Zhang et al., "H2O: Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models", 2023
-
-**核心思想**：累积注意力分数最高的 token 是"Heavy Hitter"，最值得保留。
+如果把驱逐策略抽象成优化问题，更有用的写法不是某个单一指标，而是三项折中：
 
 $$
-\text{Score}_{\text{H2O}}(i) = \sum_{t=1}^{T_{\text{current}}} \sum_{h=1}^{H} a_{t,h}(i)
+\min\ \alpha \cdot \text{miss\_rate} + \beta \cdot \text{recompute\_cost} + \gamma \cdot \text{unfairness}
 $$
 
-其中 $a_{t,h}(i)$ 是第 $t$ 步、第 $h$ 个头对位置 $i$ 的注意力权重。
+这三项分别对应：
 
-**保留策略**：Top-K 高分 token + 最近 $w$ 个 token（Sliding Window），总预算 $C = K + w$。
+- `miss_rate`：下次需要它时已经不在缓存里。
+- `recompute_cost`：被驱逐后若要恢复，需要付出的 prefill 或回填代价。
+- `unfairness`：多租户场景下，某个租户是不是长期吃掉了超额预算。
 
-### 3.2 StreamingLLM (Attention Sink)
+不同系统的区别，不在于有没有这三项，而在于各项权重偏向哪里。
 
-> **出处**：Xiao et al., "Efficient Streaming Language Models with Attention Sinks", 2023
+## 3. LRU：把“最近有没有用过”写成分数
 
-**关键发现**：序列开头的几个 token（即使内容无关）总是获得极高的注意力分数，称为**注意力汇聚点（Attention Sink）**。丢弃它们会导致模型输出严重退化。
-
-**保留策略**（极简但有效）：
-$$
-\text{Keep} = \underbrace{\{1, 2, \dots, s\}}_{\text{Sink tokens}} \cup \underbrace{\{T-w+1, \dots, T\}}_{\text{最近 } w \text{ 个}}
-$$
-
-总缓存大小固定为 $s + w$，与序列长度 $T$ 完全无关 → 支持**无限长度**的流式推理。
-
-### 3.3 SnapKV
-
-> **出处**：Li et al., "SnapKV: LLM Knows What You are Looking for Before Generation", 2024
-
-**核心思想**：利用 Prefill 末尾的一小段"观察窗口"（Observation Window）的注意力模式，**一次性**决定整个历史 KV Cache 中哪些 token 值得保留。
-
-**算法步骤**：
-1. 取 Prompt 最后 $w_{\text{obs}}$ 个 token 的注意力权重矩阵 $A \in \mathbb{R}^{w_{\text{obs}} \times T}$。
-2. 对每个历史位置 $i$ 计算"投票分"：
+LRU 的核心非常直接：越久没被访问，越应该优先驱逐。分数可写成：
 
 $$
-\text{Score}_{\text{SnapKV}}(i) = \sum_{t=T-w_{\text{obs}}+1}^{T} \sum_{h=1}^{H} a_{t,h}(i)
+\text{score}_{\mathrm{LRU}}(i) = t_{\mathrm{now}} - t_{\mathrm{last\_access}}(i)
 $$
 
-3. 按分数选 Top-$K$ 保留，丢弃其余。
-
-**优势**：仅在 Prefill 结束时做一次决策，Decode 过程中无需反复重算分数。
-
-### 3.4 Ada-KV / PyramidKV
-
-> **出处**：Feng et al., "Ada-KV: Optimizing KV Cache Eviction by Adaptive Budget Allocation for Efficient LLM Inference", 2024
-
-**核心思想**：不同层、不同头需要的 KV 预算应该**不同**。注意力越分散（Entropy 越高）的头需要保留更多 token。
-
-层/头 $l, h$ 的注意力熵：
-$$
-\mathcal{H}_{l,h} = -\sum_{i=1}^{T} \bar{a}_{l,h}(i) \log \bar{a}_{l,h}(i)
-$$
-
-其中 $\bar{a}_{l,h}(i)$ 是在观察窗口内平均的注意力权重。
-
-**自适应预算分配**：
-$$
-C_{l,h} = C_{\text{total}} \times \frac{\mathcal{H}_{l,h}}{\sum_{l',h'} \mathcal{H}_{l',h'}}
-$$
-
-熵高的头（注意力分散，需要看更多 token）分配更多预算；熵低的头（只关注少数位置）分配更少预算。
-
----
-
-## 4. 结构化保护策略 (ACTA)
-
-> **出处**：Patel et al., "ACTA: Advanced Cache Token Allocation", 2024
-
-**核心思想**：某些 token（System Prompt、标签、用户 Query 的关键词）无论注意力分数如何，都必须被**无条件保护**。
-
-**两阶段策略**：
+于是 victim 就是年龄最大的条目：
 
 $$
-\text{Phase 1: } \text{Protected} = \text{System} \cup \text{Label} \cup \text{Query\_Keywords}
-$$
-$$
-\text{Phase 2: } \text{Score-based fill} = \text{Top-}(C - |\text{Protected}|) \text{ from remaining by attention score}
+\text{victim}_{\mathrm{LRU}} = \arg\max_i\ \text{score}_{\mathrm{LRU}}(i)
 $$
 
-**评估指标**：Label Token Survival Rate (LTSR)
-$$
-\text{LTSR} = \frac{|\text{Label tokens surviving in cache}|}{|\text{Total label tokens}|}
-$$
+它的优点是简单、稳定、实现代价低；它的缺点是完全不关心“这个条目是不是虽然不常访问，但一旦命中就很重要”。
 
-理想情况 $\text{LTSR} = 1$（所有标签 token 都被保留）。
+仓库里的对应实现是 `../src/kv_cache/eviction/policies.py` 的 `LRUPolicy.select_victim()`。它直接按 `last_access_step` 最小的序列做选择。
 
----
+## 4. LFU：把“历史上用过多少次”也算进去
 
-## 5. 统一价值打分框架
-
-将上述策略统一为一个**加权打分模型**：
+如果系统里存在稳定热点，只看最近一次访问就不够了。LFU 更自然的写法是先比较访问次数，再用 LRU 做 tie-break：
 
 $$
-\text{Value}(i) = \alpha \cdot \text{AttnScore}(i) + \beta \cdot \text{RecomputeCost}(i) + \gamma \cdot \text{Recency}(i) + \delta \cdot \text{StructuralPriority}(i)
+\text{victim}_{\mathrm{LFU}} = \arg\min_i\ \left(\text{use\_count}(i),\ t_{\mathrm{last\_access}}(i)\right)
 $$
 
-| 分量 | 含义 | 典型来源 |
-|------|------|---------|
-| $\text{AttnScore}$ | 累积注意力权重 | H2O / SnapKV |
-| $\text{RecomputeCost}$ | 重算该 token 的代价 | $\propto$ 该 token 所在 prefix 长度 |
-| $\text{Recency}$ | 最近访问时间 | LRU 信号 |
-| $\text{StructuralPriority}$ | 结构重要性 | ACTA 的保护列表 |
+这条式子的意思是：
 
-驱逐规则：**优先驱逐 $\text{Value}(i)$ 最小的 token**。
+- 优先驱逐总访问次数更少的对象。
+- 如果访问次数一样，再驱逐更久没被用过的对象。
 
----
+仓库里的对应实现是 `../src/kv_cache/eviction/policies.py` 的 `LFUPolicy.select_victim()`，排序键正是 `use_count`、`last_access_step` 和序列标识。
 
-## 6. 命中率理论
+## 5. Fair Quota：先看谁超配，再在超配租户里挑 victim
 
-### 6.1 理论最优 (Bélády's Algorithm)
+多租户系统里，最怕的不是局部 miss，而是某个大租户把 block 几乎全吃掉。此时更合适的写法是先给每个租户一份预算。
 
-Bélády 算法驱逐**未来最晚被再次访问**的块。它给出了命中率的**理论上界**，但无法在线实现（需要知道未来的访问序列）。
-
-### 6.2 有效容量
+如果租户 `t` 的权重是 `w_t`，总 block 预算是 `B_total`，那么它的配额可以写成：
 
 $$
-\text{Effective Capacity} = C \times \text{Hit Rate}
+\text{quota}_t = \frac{w_t}{\sum_{t'} w_{t'}} \times B_{\mathrm{total}}
 $$
 
-若命中率为 $90\%$，则 $C = 1000$ 的缓存实际只等价于 $900$ 的有效容量。
+而租户当前实际占用为：
 
-### 6.3 监控指标
+$$
+\text{usage}_t = \sum_{i \in \text{tenant}(t)} \text{blocks}_i
+$$
 
-- **Refill Rate**（回填率）= 被驱逐后又被重算的 token 比例。Refill Rate 高说明驱逐策略存在严重误判。
-- **驱逐开销**：$\text{overhead} = f_{\text{evict}} \times c_{\text{per\_evict}}$（驱逐频率 × 单次驱逐成本）。
+先找出超配最多的租户：
 
----
+$$
+ t^* = \arg\max_t\ \left(\text{usage}_t - \text{quota}_t\right)
+$$
 
-## 7. 驱逐粒度选择
+再在这个租户内部按 LRU 选 victim：
 
-| 粒度 | 优势 | 劣势 | 代表系统 |
-|------|------|------|---------|
-| **Token 级** | 最精细，最高命中率 | 管理开销大 | H2O, SnapKV |
-| **Block 级** | 与 PagedAttention 天然兼容 | 整块驱逐可能含有重要 token | vLLM |
-| **Layer 级** | 某些层 KV 可牺牲 | 影响粒度粗 | PyramidKV |
+$$
+\text{victim}_{\mathrm{fair}} = \arg\min_{i \in \text{tenant}(t^*)}\ t_{\mathrm{last\_access}}(i)
+$$
 
----
+这样做的重点不是“绝对公平”，而是先防止一个租户持续挤压其他租户的生存空间。
 
-## 8. 面试实战追问
+仓库里的对应实现是：
 
-**Q1：H2O 和 SnapKV 的核心区别是什么？**
-> H2O 在每一步 Decode 时**动态**更新所有 token 的累积注意力分数，计算开销更大但更精确。SnapKV 只在 Prefill 结束时做**一次性**决策，运行时零开销，但无法适应 Decode 过程中注意力模式的变化。
+- `../src/kv_cache/eviction/policies.py` 的 `FairPolicy._tenant_of()`
+- `../src/kv_cache/eviction/policies.py` 的 `FairPolicy._quotas()`
+- `../src/kv_cache/eviction/policies.py` 的 `FairPolicy.select_victim()`
 
-**Q2：为什么 StreamingLLM 要保留开头的 Sink Token？**
-> Softmax 的归一化特性要求注意力权重之和为 1。当模型对某些位置"不知道该关注哪里"时，它会把注意力"倒"到序列开头的 token 上（即使内容无关）。如果删除这些 token，归一化分母发生剧变，导致所有注意力分布紊乱，输出严重退化。
+## 6. 驱逐成本为什么不能只看命中率
 
----
+同样是一次驱逐，不同 victim 的代价可能完全不同。最粗但很实用的近似，是把重算成本和被驱逐 token 数直接挂钩：
 
-## 9. 对应源码与阅读顺序
+$$
+\text{recompute\_tokens}(i) \approx \text{num\_blocks}(i) \times \text{block\_size}
+$$
 
-- 先读 [../notes/kv-eviction/formula-to-code-walkthrough.md](../notes/kv-eviction/formula-to-code-walkthrough.md)，把 LRU、LFU、Fair quota 三类驱逐策略放到同一个“价值函数 / 预算约束”框架里理解。
-- 再看 [../src/kv_cache/core.py](../src/kv_cache/core.py)，重点关注 `last_access_step`、`use_count`、`num_blocks()` 这些元数据是如何随着访问过程被维护的。
-- 接着看 [../src/kv_cache/eviction/policies.py](../src/kv_cache/eviction/policies.py)，对照三种 `select_victim()` 的排序键，理解为什么不同策略会选出不同牺牲者。
-- 最后跑 `python -m pytest tests/test_kv_cache.py -v`，检查缓存生命周期、访问统计和驱逐结果是否与策略预期一致。
+如果 prefill 吞吐近似稳定，还可以继续改写成时间成本：
+
+$$
+\text{recompute\_time}(i) \approx \frac{\text{recompute\_tokens}(i)}{\text{prefill\_throughput}}
+$$
+
+这就解释了一个线上常见现象：
+
+- 驱逐一个很旧但很长的序列，未必比驱逐几个短小的边缘序列更便宜。
+- 如果回填非常慢，那么“命中率看起来还行”不等于端到端时延真的还行。
+
+## 7. 这些公式如何落到仓库数据结构
+
+驱逐策略要成立，底层元数据必须先存在。这个仓库里最值得对照的是两层：
+
+### 7.1 元数据从哪里来
+
+- `../src/kv_cache/core.py` 的 `SequenceKVCache.num_blocks()` 提供每条序列的 block 占用。
+- `../src/kv_cache/core.py` 里的 `last_access_step` 和 `use_count` 是 LRU / LFU 的核心输入。
+- `../src/kv_cache/core.py` 的 `release()` 负责真正把 victim 占用的 block 归还给分配器。
+
+### 7.2 策略如何消费这些元数据
+
+- `LRUPolicy` 只看“最后访问时间”。
+- `LFUPolicy` 看“访问次数 + 最后访问时间”。
+- `FairPolicy` 先按租户聚合 `num_blocks()`，再根据配额与超配量做二段式选择。
+
+如果你想把驱逐和测试、分页、压缩串起来看，建议继续读：
+
+- `../notes/kv-eviction/formula-to-code-walkthrough.md`
+- `kv-memory.md`
+- `kv-compression-math.md`
+
+## 8. 什么时候该用哪一类策略
+
+| 场景 | 更适合的策略 | 原因 |
+|------|--------------|------|
+| 单租户、稳定业务、实现要尽量简单 | LRU | 成本最低，行为可预测 |
+| 热点非常稳定、重复访问明显 | LFU | 能保住高频热点 |
+| 多租户共享集群 | Fair quota | 先防止单租户吃满预算 |
+| 强依赖历史重要性、需要内容感知 | 驱逐前加压缩或打分 | 只靠 recency / frequency 不够 |
+
+## 9. 驱逐和压缩不要混成一回事
+
+这两件事很容易在讨论里混淆，但职责并不一样：
+
+- 压缩解决的是“同样的信息能不能更便宜地存”。
+- 驱逐解决的是“预算不够时必须先舍弃谁”。
+- 一个成熟系统通常会先做分页和压缩，再在溢出时用驱逐策略兜底。
+
+所以真正的顺序往往是：
+
+1. 先用 `kv-memory.md` 算清预算。
+2. 再用 `kv-compression-math.md` 尽量把每个 token 变便宜。
+3. 最后才在预算仍然不足时启用 `kv eviction`。
+
+## 10. 这页真正该记住什么
+
+- LRU、LFU、Fair 的差别，本质上是评分函数和优先级规则不同。
+- 多租户环境里，不显式写出配额公式，就很难真正谈公平。
+- 线上策略评估不能只看命中率，还要看重算成本和尾延迟外溢。
+- 驱逐是最后一道闸门，不应该替代容量规划和压缩本身。

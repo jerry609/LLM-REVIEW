@@ -1,232 +1,196 @@
-# KV Cache 显存估算与容量规划数学详解
+# KV Cache 显存规划：从 `bytes/token` 到块分配与并发预算
 
-> **核心定位**：从第一性原理出发，精确推导 KV Cache 在 MHA / GQA / MQA / MLA 各架构下的显存消耗公式，给出实际模型的代入计算，并建立完整的 GPU 显存预算分配框架与最大并发估算方法。
+> 这页不再试图把 KV Cache 写成一整章教材，而是把真正会落到工程预算里的三件事串起来：先算单个 token 的 KV 开销，再把它扩展到序列与并发预算，最后落到分页分块、碎片率和前缀共享。读完这页，你应该能直接回答“这张卡能撑多长上下文、多少并发、为什么会碎片化”。
 
----
+## 1. 先统一最小符号集
 
-## 1. KV Cache 的精确显存公式
+| 记号 | 含义 |
+|------|------|
+| `L_layers` | Transformer 层数 |
+| `n_heads` | Query head 数 |
+| `n_kv_heads` | KV head 数 |
+| `d_head` | 单个 head 的维度 |
+| `s_bytes` | 单个元素的字节数，例如 BF16 是 2，INT8 是 1 |
+| `T_cache` | 当前序列缓存的 token 数 |
+| `B_active` | 同时活跃的序列数 |
+| `block_size` | 单个 KV block 可容纳的 token 数 |
+| `N_blocks` | GPU 上可用的物理 block 总数 |
+| `M_budget` | 分给 KV Cache 的显存预算 |
 
-### 1.1 单 Token 显存占用
+## 2. 从单层单 token 开始推导
 
-对于每个 token，每层需要存储 **Key** 和 **Value** 两个张量，每个张量的形状为 $\mathbb{R}^{H_{\text{KV}} \times d_{\text{head}}}$。
-
-$$
-\text{Bytes/token/layer} = 2 \times H_{\text{KV}} \times d_{\text{head}} \times s
-$$
-
-其中 $s$ 是每个元素的字节数（BF16: $s=2$，FP8/INT8: $s=1$，INT4: $s=0.5$）。
-
-全模型的单 Token 显存占用：
-
-$$
-\boxed{\text{bytes\_per\_token} = 2 \times L \times H_{\text{KV}} \times d_{\text{head}} \times s}
-$$
-
-### 1.2 公式推导说明
-
-这个公式中每个因子的含义：
-- $2$：K 和 V 各一份
-- $L$：模型总层数（每层独立存储 KV）
-- $H_{\text{KV}}$：KV 头的数目（MHA 时 $H_{\text{KV}} = H$，GQA 时 $H_{\text{KV}} < H$，MQA 时 $H_{\text{KV}} = 1$）
-- $d_{\text{head}}$：每个头的维度（通常 $d_{\text{head}} = d_{\text{model}} / H$）
-- $s$：精度字节数
-
----
-
-## 2. 典型模型代入计算
-
-### 2.1 Llama-2-7B（GQA，$H_{\text{KV}} = 8$）
-
-| 参数 | 值 |
-|------|-----|
-| $L$ | $32$ |
-| $H$ | $32$ |
-| $H_{\text{KV}}$ | $8$ |
-| $d_{\text{head}}$ | $128$ |
-| $s$ (BF16) | $2$ |
+对任意一层，只要还是显式存 `K` 和 `V`，每个 token 的存储量就是两份张量：
 
 $$
-\text{bytes\_per\_token} = 2 \times 32 \times 8 \times 128 \times 2 = 131{,}072 \text{ B} = 128 \text{ KB}
+\text{bytes}_{\text{layer, token}} = 2 \times n_{\mathrm{kv\_heads}} \times d_{\mathrm{head}} \times s_{\mathrm{bytes}}
 $$
 
-| 序列长度 | 单序列 KV | 64 并发 KV |
-|---------|----------|-----------|
-| $4{,}096$ | $128 \text{ KB} \times 4096 = 512 \text{ MB}$ | $32 \text{ GB}$ |
-| $32{,}768$ | $4 \text{ GB}$ | $256 \text{ GB}$ (需多卡) |
-| $131{,}072$ | $16 \text{ GB}$ | $1 \text{ TB}$ (需集群) |
+这条式子里每个因子都很直白：
 
-### 2.2 Llama-2-7B（MHA，$H_{\text{KV}} = 32$）
+- 前面的 `2` 来自 `K` 和 `V` 两份缓存。
+- `n_kv_heads` 决定每层到底要存多少组 KV 头。
+- `d_head` 决定每个头的宽度。
+- `s_bytes` 决定精度对应的字节成本。
 
-$$
-\text{bytes\_per\_token} = 2 \times 32 \times 32 \times 128 \times 2 = 524{,}288 \text{ B} = 512 \text{ KB}
-$$
-
-相比 GQA 版本**膨胀 $4\times$**。
-
-### 2.3 Llama-2-70B（GQA，$H_{\text{KV}} = 8$）
+把所有层叠起来，就得到整个模型的单 token KV 开销：
 
 $$
-\text{bytes\_per\_token} = 2 \times 80 \times 8 \times 128 \times 2 = 327{,}680 \text{ B} = 320 \text{ KB}
+\text{bytes}_{\text{token}} = 2 \times L_{\mathrm{layers}} \times n_{\mathrm{kv\_heads}} \times d_{\mathrm{head}} \times s_{\mathrm{bytes}}
 $$
 
-| 序列长度 | 单序列 KV |
-|---------|----------|
-| $4{,}096$ | $1.25 \text{ GB}$ |
-| $128{,}000$ | $\approx 39 \text{ GB}$ |
+这就是最核心的 `bytes_per_token` 公式。后面的容量规划、并发估算、块数量估算，本质上都只是围绕它做代数改写。
 
-### 2.4 各架构 KV 比较总表
+## 3. 不同注意力结构到底改了哪一项
 
-以 $d_{\text{model}} = 4096$，$H = 32$，$L = 32$，BF16 为基准：
+从 KV 预算角度看，MHA、GQA、MQA、MLA 的差异，本质上是“每个 token 要存多少维的历史表示”。
 
-| 架构 | $H_{\text{KV}}$ | bytes/token | 相对 MHA |
-|------|:---------------:|:-----------:|:--------:|
-| **MHA** | $32$ | $512 \text{ KB}$ | $1\times$ |
-| **GQA** ($H_{\text{KV}}=8$) | $8$ | $128 \text{ KB}$ | $0.25\times$ |
-| **GQA** ($H_{\text{KV}}=4$) | $4$ | $64 \text{ KB}$ | $0.125\times$ |
-| **MQA** | $1$ | $16 \text{ KB}$ | $0.03\times$ |
+| 结构 | 单 token 显存主式 | 真正被改变的量 | 工程含义 |
+|------|-------------------|----------------|----------|
+| MHA | `2 x L_layers x n_heads x d_head x s_bytes` | `n_kv_heads = n_heads` | KV 最完整，也最贵 |
+| GQA | `2 x L_layers x n_kv_heads x d_head x s_bytes` | `n_kv_heads < n_heads` | 通过共享 KV 头显著降显存和 decode 带宽 |
+| MQA | `2 x L_layers x 1 x d_head x s_bytes` | `n_kv_heads = 1` | 显存最省，但共享更激进 |
+| MLA | 近似写成 `L_layers x (d_c + d_r) x s_bytes` | 把历史表示改写成共享潜变量与位置部分 | 不是简单少几个 head，而是整个缓存表征变了 |
 
----
-
-## 3. 量化压缩后的显存
-
-### 3.1 压缩比计算
+如果只比较 MHA 与 GQA，压缩比最容易看：
 
 $$
-\text{compression\_ratio} = \frac{s_{\text{new}}}{s_{\text{old}}}
+\text{saving ratio}_{\mathrm{GQA\ vs\ MHA}} = \frac{n_{\mathrm{kv\_heads}}}{n_{\mathrm{heads}}}
 $$
 
-$$
-\text{bytes\_per\_token}_{\text{new}} = \text{bytes\_per\_token}_{\text{old}} \times \frac{s_{\text{new}}}{s_{\text{old}}}
-$$
+例如 `n_heads = 32`、`n_kv_heads = 8`，那么 KV 显存和 decode 阶段的历史读取量都会降到原来的四分之一。
 
-| 量化精度 | $s$ | 压缩比 (vs BF16) | 节省率 |
-|---------|-----|:-----------------:|:------:|
-| BF16 | $2$ | $1\times$ | $0\%$ |
-| FP8 / INT8 | $1$ | $0.5\times$ | $50\%$ |
-| INT4 | $0.5$ | $0.25\times$ | $75\%$ |
-| INT2 (KIVI) | $0.25$ | $0.125\times$ | $87.5\%$ |
+## 4. 从单序列扩展到总预算
 
-### 3.2 分组量化的实际压缩比
-
-分组量化（Group Quantization）需要额外存储每组的 Scale（和可选的 Zero Point）。实际压缩比为：
+单条序列的 KV 显存：
 
 $$
-\text{effective\_ratio} = \frac{n_{\text{elem}} \times s_{\text{new}} + n_{\text{groups}} \times s_{\text{scale}}}{n_{\text{elem}} \times s_{\text{old}}}
+M_{\mathrm{seq}} = T_{\mathrm{cache}} \times \text{bytes}_{\text{token}}
 $$
 
-以 INT4 Group=128 为例：
-$$
-\text{effective\_ratio} = \frac{0.5 + 2/128}{2} = \frac{0.5156}{2} \approx 25.8\%
-$$
-
-接近理论 $25\%$，额外开销约 $3\%$。
-
----
-
-## 4. GPU 显存预算分配模型
-
-完整的 GPU 显存分配方程：
+如果系统里同时有多条活跃序列，总 KV 显存就是所有序列长度的加总：
 
 $$
-\boxed{M_{\text{GPU}} = M_{\text{weights}} + M_{\text{KV}} + M_{\text{activations}} + M_{\text{overhead}}}
+M_{\mathrm{total}} = \sum_{i=1}^{B_{\mathrm{active}}} T_i \times \text{bytes}_{\text{token}}
 $$
 
-| 组件 | 公式 | 典型值 (7B BF16) |
-|------|------|:----------------:|
-| **模型权重** $M_{\text{weights}}$ | $N \times s$ | $7 \times 10^9 \times 2 = 14 \text{ GB}$ |
-| **KV Cache** $M_{\text{KV}}$ | $\text{bytes\_per\_token} \times \sum_i T_i$ | 取决于并发和序列长度 |
-| **激活缓冲** $M_{\text{act}}$ | 与 $B \times T$ 相关 | $1$–$4 \text{ GB}$ |
-| **系统预留** $M_{\text{overhead}}$ | CUDA Context + 碎片 | $1$–$3 \text{ GB}$ |
-
-### 4.1 最大并发估算
+当你只想做粗估时，可以把每条序列近似成同样的平均长度：
 
 $$
-M_{\text{KV\_budget}} = M_{\text{GPU}} - M_{\text{weights}} - M_{\text{act}} - M_{\text{overhead}}
+M_{\mathrm{total}} \approx B_{\mathrm{active}} \times \bar{T}_{\mathrm{cache}} \times \text{bytes}_{\text{token}}
 $$
 
-$$
-\boxed{\text{max\_concurrent} = \left\lfloor \frac{M_{\text{KV\_budget}}}{\text{bytes\_per\_token} \times \bar{T}} \right\rfloor}
-$$
+这就是容量规划里最常用的并发估算式。
 
-**代入示例**（7B GQA on A100 80GB）：
-$$
-M_{\text{KV\_budget}} = 80 - 14 - 2 - 2 = 62 \text{ GB}
-$$
-$$
-\text{max\_concurrent} = \left\lfloor \frac{62 \text{ GB}}{128 \text{ KB} \times 2048} \right\rfloor = \left\lfloor \frac{62 \text{ GB}}{256 \text{ MB}} \right\rfloor = 248
-$$
+## 5. 从 GPU 显存反推最大上下文和最大并发
 
----
-
-## 5. PagedAttention 对显存效率的影响
-
-传统连续分配需按 $T_{\max}$ 预分配，PagedAttention 按实际使用分配：
+真正能分给 KV Cache 的显存，不等于整张卡的物理容量。更稳妥的预算写法是：
 
 $$
-\text{有效显存放大率} = \frac{T_{\max}}{\bar{T}} = \frac{8192}{2048} = 4\times
+M_{\mathrm{budget}} = M_{\mathrm{GPU}} - M_{\mathrm{weights}} - M_{\mathrm{activations}} - M_{\mathrm{workspace}} - M_{\mathrm{safety}}
 $$
 
-结论：当平均序列长度远小于最大长度时，PagedAttention 可以让最大并发提升约 **4 倍**。
-
----
-
-## 6. 规划流程（工程 Checklist）
-
-### 6.1 计算静态占用
-
-先计算：
+于是，总可缓存 token 数上限可以直接反推：
 
 $$
-M_{\text{static}} = M_{\text{weights}} + M_{\text{act}} + M_{\text{overhead}}
+T_{\mathrm{max,total}} = \left\lfloor \frac{M_{\mathrm{budget}}}{\text{bytes}_{\text{token}}} \right\rfloor
 $$
 
-其中 $M_{\text{weights}} = N \times s$，再加上激活缓冲和系统预留。
-
-### 6.2 确定 KV 预算
+如果你预期平均上下文长度是 `bar_T_cache`，最大并发就近似为：
 
 $$
-M_{\text{KV\_budget}} = M_{\text{GPU}} - M_{\text{static}}
+B_{\mathrm{max}} \approx \left\lfloor \frac{T_{\mathrm{max,total}}}{\bar{T}_{\mathrm{cache}}} \right\rfloor
 $$
 
-这一步给出真正可用于 KV Cache 的显存空间。
+### 5.1 一个最常用的代入例子
 
-### 6.3 选择精度策略
+以 LLaMA-3 8B 常见配置为例：
 
-根据质量门槛选择 KV Cache 精度，也就是确定 $s$ 的取值。
+- `L_layers = 32`
+- `n_kv_heads = 8`
+- `d_head = 128`
+- `s_bytes = 2`，也就是 BF16
 
-- 如果质量优先，优先 BF16 或 FP8。
-- 如果并发优先，可考虑 INT8、INT4，甚至更激进的 KIVI 类方案。
-
-### 6.4 反推最大并发
+代入后得到：
 
 $$
-	ext{max\_concurrent} = \frac{M_{\text{KV\_budget}}}{\text{bytes\_per\_token} \times \bar{T}}
+\text{bytes}_{\text{token}} = 2 \times 32 \times 8 \times 128 \times 2 = 131072\ \text{bytes}
 $$
 
-这里 $\bar{T}$ 是平均有效序列长度，而不是理论最大长度。
+也就是每个 token 约 `128 KiB` 的 KV 开销。
 
-### 6.5 决定压缩还是驱逐
+如果单条序列的上下文长度是 `8192`，那么这条序列的 KV 显存大约是：
 
-如果反推出的并发能力不够，通常先做量化压缩，再考虑驱逐策略。
+$$
+8192 \times 131072 = 1073741824\ \text{bytes}
+$$
 
-- 量化通常先带来 $50\%$ 到 $75\%$ 的直接压缩收益。
-- 驱逐会影响上下文保留质量，应该放在量化之后评估。
+也就是约 `1 GiB`。这也是为什么大家一做长上下文就会立刻感受到 KV Cache 的压力：不是模型权重先爆，而是“历史 token 的存储账单”先开始失控。
 
-### 6.6 设置安全边际
+## 6. Paged KV：显存不是按 token 分配，而是按 block 分配
 
-最后预留 $10\%$ 到 $20\%$ 的安全边际，用来覆盖突发长序列、显存碎片和运行时波动。
+真实系统通常不会一边来一个 token、一边精确地为一个 token 单独申请显存，而是把 KV Cache 分成固定大小的 block。这样一来，分配问题会从“多少 token”转成“多少块”。
 
----
+一个序列需要的 block 数量是：
 
-## 面试一句话
+$$
+N_{\mathrm{blocks}}(T_{\mathrm{cache}}) = \left\lceil \frac{T_{\mathrm{cache}}}{\text{block\_size}} \right\rceil
+$$
 
-> "KV 容量规划是线性账本：$2 \times L \times H_{\text{KV}} \times d_{\text{head}} \times s \times \sum T_i$。GQA 省 $H/H_{\text{KV}}$ 倍，量化再省 $s_{\text{old}}/s_{\text{new}}$ 倍，最后用 PagedAttention 消除碎片。"
+这条序列真正占掉的已分配容量则变成：
 
----
+$$
+M_{\mathrm{alloc, seq}} = N_{\mathrm{blocks}}(T_{\mathrm{cache}}) \times \text{block\_size} \times \text{bytes}_{\text{token}}
+$$
 
-## 对应源码与阅读顺序
+于是，内部碎片率可以直接写成：
 
-- 先读 [../notes/kv-cache/formula-to-code-walkthrough.md](../notes/kv-cache/formula-to-code-walkthrough.md)，把 `bytes_per_token -> block 数 -> Copy-on-Write -> 量化/驱逐` 串成一条线。
-- 再对照 [../src/kv_cache/core.py](../src/kv_cache/core.py) 的 `_blocks_needed()`、`allocate_for_sequence()`、`append_tokens()`、`fork()`，把容量公式映射到 block allocator。
-- 如果你想继续往“压缩”和“预算管理”延伸，再读 [../src/kv_cache/compression/quantizer.py](../src/kv_cache/compression/quantizer.py) 和 [../src/kv_cache/eviction/policies.py](../src/kv_cache/eviction/policies.py)。
-- 最后跑 `python -m pytest tests/test_kv_cache.py -v`，确认这些容量和生命周期假设在代码里是成立的。
+$$
+\text{fragmentation}(T_{\mathrm{cache}}) = 1 - \frac{T_{\mathrm{cache}}}{N_{\mathrm{blocks}}(T_{\mathrm{cache}}) \times \text{block\_size}}
+$$
+
+这条式子解释了一个很工程化的现象：当 `block_size` 过大、而请求长度分布又很离散时，最后一个 block 往往塞不满，碎片率就会上去。
+
+## 7. 前缀共享与 Copy-on-Write 为什么能省很多
+
+如果两条请求共享长前缀，例如同一段 system prompt 或者 prompt cache 命中，那么第二条请求一开始并不需要真的复制全部 KV 数据。更合理的写法是：
+
+$$
+\Delta M_{\mathrm{fork, initial}} \approx M_{\mathrm{metadata}}
+$$
+
+只有在后续写入新 token，或者发生需要独占修改的场景时，才会通过 Copy-on-Write 新分配 block。此时增量开销更接近：
+
+$$
+\Delta M_{\mathrm{append}} = \Delta N_{\mathrm{blocks}} \times \text{block\_size} \times \text{bytes}_{\text{token}}
+$$
+
+这也是 prefix caching 好用的根本原因：共享前缀时，真正被放大的通常不是 KV 数据本身，而是很轻量的 block table 元数据。
+
+## 8. 公式如何落到仓库源码
+
+这页最值得对照的不是抽象论文，而是仓库里的最小实现：
+
+- `../src/kv_cache/core.py` 里的 `PagedKVCacheManager._blocks_needed()`，就是上面 `ceil(T_cache / block_size)` 的直接实现。
+- `../src/kv_cache/core.py` 里的 `allocate_for_sequence()`，体现的是“先按需要块数分配，再登记 block table”。
+- `../src/kv_cache/core.py` 里的 `append_tokens()`，体现的是 token 追加时按需补块，而不是每次整段重建。
+- `../src/kv_cache/core.py` 里的 `fragmentation()`，对应的正是“已分配块里有多少空槽位被浪费”。
+- `../src/kv_cache/core.py` 里的 `fork()`，对应的正是前缀共享和 Copy-on-Write 的元数据复用逻辑。
+
+如果你想把公式和测试一起对上，可以继续看：
+
+- `../tests/test_kv_cache.py`
+- `../notes/kv-cache/formula-to-code-walkthrough.md`
+- `pagedattention-math.md`
+
+## 9. 这页真正应该记住什么
+
+- KV 预算最先要抓的不是“模型多少参数”，而是 `bytes_per_token`。
+- GQA 和 MQA 的收益，首先体现在 `n_kv_heads` 下降；MLA 则是把“要存什么”这件事改写掉。
+- 真正的线上容量规划，不是只算 token 数，还要算 block 粒度带来的碎片。
+- 只要系统支持前缀共享，就应该把“共享前缀命中率”当成和显存预算同等重要的指标。
+
+## 10. 继续深入的阅读顺序
+
+1. 先回到 `../notes/kv-cache/formula-to-code-walkthrough.md`，把 block allocator、fork、append 这些接口走一遍。
+2. 再看 `pagedattention-math.md`，理解为什么逻辑连续和物理离散可以同时成立。
+3. 如果你接下来要优化显存，再接 `kv-compression-math.md` 和 `kv-eviction-math.md`。

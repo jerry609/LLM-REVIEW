@@ -1,201 +1,208 @@
-# KV Cache 压缩与量化数学详解
+# KV Compression：从量化误差到保留预算
 
-> **核心定位**：从量化理论的第一性原理出发，严格推导线性量化、分组量化的误差界，深入剖析 KV Cache 专用量化方法（KIVI、Per-token / Per-channel），以及权重量化的核心算法（GPTQ、AWQ、SmoothQuant）的数学本质。
+> 这页把 KV Compression 拆成两条更适合工程决策的主线：第一条是“每个 token 还能不能更便宜”，也就是量化；第二条是“是不是所有 token 都必须保留”，也就是选择与稀疏化。真正的线上方案，往往是这两条线一起用，而不是只做其中一边。
 
----
+## 1. 先把总账写对
 
-## 1. 线性量化的数学基础
-
-### 1.1 对称量化 (Symmetric Quantization)
-
-将浮点张量 $x$ 映射到 $b$-bit 整数域 $\{-2^{b-1}+1, \dots, 2^{b-1}-1\}$：
+压缩后的 KV 总开销，不应该只写成“原来多少倍”，而应该直接写成预算式：
 
 $$
-\text{scale} = \frac{\max(|x|)}{2^{b-1} - 1}
-$$
-$$
-q = \text{round}\!\left(\frac{x}{\text{scale}}\right), \quad \hat{x} = \text{scale} \cdot q
+M_{\mathrm{KV, final}} = T_{\mathrm{kept}} \times \text{bytes}_{\text{token}}^{\mathrm{compressed}} + M_{\mathrm{meta}} + M_{\mathrm{index}}
 $$
 
-- **Zero Point** $= 0$（对称，原点不偏移）。
-- **适用场景**：权重（通常近似对称分布）。
+这条式子把两个核心旋钮都暴露出来了：
 
-### 1.2 非对称量化 (Asymmetric Quantization)
+- `T_kept` 控制你最后到底保留多少历史 token。
+- `bytes_token_compressed` 控制每个保留下来的 token 有多贵。
 
-当数据分布不对称时（如 ReLU 后的激活），使用非对称量化：
+如果只盯着其中一个，很容易得出看起来漂亮、但上线不稳的结论。
 
-$$
-\text{scale} = \frac{\max(x) - \min(x)}{2^b - 1}
-$$
-$$
-\text{zp} = \text{round}\!\left(-\frac{\min(x)}{\text{scale}}\right)
-$$
-$$
-q = \text{round}\!\left(\frac{x}{\text{scale}}\right) + \text{zp}, \quad \hat{x} = \text{scale} \cdot (q - \text{zp})
-$$
+## 2. 路线一：先压低每个 token 的字节数
 
-### 1.3 量化误差分析
+### 2.1 对称 `per-channel` 量化的主公式
 
-单元素量化误差的上界：
-$$
-|x - \hat{x}| \le \frac{\text{scale}}{2} = \frac{\text{range}}{2^{b+1} - 2}
-$$
-
-均方误差（MSE）的期望（假设 round 误差为均匀分布 $U[-\Delta/2, \Delta/2]$，$\Delta = \text{scale}$）：
-$$
-\mathbb{E}\left[(x - \hat{x})^2\right] = \frac{\Delta^2}{12} = \frac{\text{scale}^2}{12}
-$$
-
-信噪比（SNR）：
-$$
-\text{SNR} = 10 \log_{10} \frac{\|x\|^2}{\|x - \hat{x}\|^2} \approx 10 \log_{10} \frac{12 \, \text{Var}(x)}{\text{scale}^2} \quad \text{(dB)}
-$$
-
----
-
-## 2. 分组量化 (Group Quantization)
-
-### 2.1 核心动机
-
-全局量化的问题：如果张量中存在**离群值（Outlier）**，单个极大值会拉大 $\text{scale}$，导致其他正常值的量化精度严重退化。
-
-**解决方案**：将通道分为多组（Group Size $g$，典型值 $64$ 或 $128$），每组独立计算 scale 和 zp。
-
-### 2.2 误差改善的数学直觉
-
-假设组内的动态范围为 $R_g$，全局动态范围为 $R$，且 $R_g \ll R$（组内离群值概率低）：
+对于某个通道上的浮点向量 `x_j`，`b` bit 对称量化可以写成：
 
 $$
-\frac{\text{MSE}_{\text{group}}}{\text{MSE}_{\text{global}}} \approx \left(\frac{R_g}{R}\right)^2 \ll 1
+\text{scale}_j = \frac{\max |x_j|}{2^{b-1} - 1}
 $$
 
-### 2.3 额外存储开销
-
-每组需要存储 $\text{scale}$（FP16，2 bytes）和可选的 $\text{zp}$（INT8，1 byte）。对于 $n$ 个元素、组大小 $g$ 的张量：
-
 $$
-\text{overhead\_ratio} = \frac{(n/g) \times s_{\text{param}}}{n \times s_{\text{quant}}} = \frac{s_{\text{param}}}{g \times s_{\text{quant}}}
+q_j = \operatorname{round}\!\left(\frac{x_j}{\text{scale}_j}\right)
 $$
 
-**代入**：INT4 ($s_{\text{quant}} = 0.5$ B)，$g = 128$，FP16 scale ($s_{\text{param}} = 2$ B)：
 $$
-\text{overhead\_ratio} = \frac{2}{128 \times 0.5} = 3.1\%
-$$
-
----
-
-## 3. KV Cache 专用量化
-
-### 3.1 Per-token vs Per-channel 量化
-
-KV Cache 张量形状为 $\mathbb{R}^{T \times d}$。量化维度的选择至关重要：
-
-| 策略 | 量化粒度 | Scale 数量 | 适用对象 | 原因 |
-|------|---------|-----------|---------|------|
-| **Per-token** | 每行独立 | $T$ 个 | **Value Cache** | 不同 token 的 $V$ 值域差异大 |
-| **Per-channel** | 每列独立 | $d$ 个 | **Key Cache** | Key 的不同通道存在离群维度 |
-
-### 3.2 KIVI (2-bit KV Cache)
-
-> **出处**：Liu et al., "KIVI: A Tuning-Free Asymmetric 2bit Quantization for KV Cache", 2024
-
-KIVI 实现了极端的 **2-bit 量化**，其核心设计：
-
-1. **Key Cache → Per-channel INT2**：Key 的特定通道存在离群值（与 $W_K$ 的权重分布有关），per-channel 可以对每个通道独立处理离群范围。
-2. **Value Cache → Per-token INT2**：Value 的不同 token 行间方差大，per-token 更合适。
-3. **残差补偿（Residual）**：保留最近 $w$（如 $128$）个 token 的 KV 为 FP16 全精度，作为"滑动窗口残差"。
-
-$$
-\text{KV}_{\text{total}} = \underbrace{\text{INT2}(K_{\text{old}}, V_{\text{old}})}_{\text{历史}} + \underbrace{\text{FP16}(K_{\text{recent}}, V_{\text{recent}})}_{\text{窗口内}}
+\hat{x}_j = \text{scale}_j \cdot q_j
 $$
 
-显存降至原始 BF16 的约 $\frac{1}{8}$（2-bit vs 16-bit），配合窗口残差几乎不损失质量。
+这三步对应的工程含义很直接：
 
----
+1. 先为每个通道单独求一个动态范围。
+2. 再把浮点值映射到有限整数格点。
+3. 需要用时再做反量化。
 
-## 4. 权重量化方法（面试重点）
+仓库里这条线最直接对应的是：
 
-### 4.1 GPTQ
+- `../src/kv_cache/compression/quantizer.py` 的 `quantize_per_channel_symmetric()`
+- `../src/kv_cache/compression/quantizer.py` 的 `dequantize()`
 
-> **出处**：Frantar et al., "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers", 2022
+### 2.2 量化误差为什么能先看上界
 
-基于 **Optimal Brain Surgeon (OBS)** 的逐列量化框架：
-
-**目标**：量化权重 $W$ 为 $\hat{W}$，最小化输出误差：
-$$
-\min_{\hat{W}} \| W X - \hat{W} X \|_F^2
-$$
-
-**逐列更新规则**：当第 $c$ 列被量化时，量化误差通过 Hessian 矩阵的逆 $H^{-1}$ 补偿到尚未量化的其他列：
+单个标量量化到最近格点时，误差不会超过半个量化步长，因此可以直接写成：
 
 $$
-\delta_{W_{:,c}} = -\frac{w_{q,c} - w_c}{[H^{-1}]_{cc}} \cdot H^{-1}_{:,c}
+|x_j - \hat{x}_j| \le \frac{1}{2} \text{scale}_j
 $$
 
-其中 $w_{q,c}$ 是第 $c$ 列量化后的值，$H = 2 X X^\top$ 是 Hessian 矩阵。
+如果把一个通道的误差看成向量误差，最粗但很实用的上界是：
 
-### 4.2 AWQ (Activation-Aware Weight Quantization)
-
-> **出处**：Lin et al., "AWQ: Activation-Aware Weight Quantization for LLM Compression and Acceleration", 2023
-
-**核心洞察**：不是所有权重同等重要。对应**激活值大**的通道的权重，量化误差会被放大。
-
-AWQ 对每个通道 $i$ 计算一个保护缩放因子：
 $$
-s_i = \left(\max_{\text{batch}} |X_i|\right)^\alpha, \quad \alpha \in [0, 1]
+\|x - \hat{x}\|_2^2 \le \frac{1}{4} \sum_j \text{scale}_j^2
 $$
 
-量化前对权重做缩放：$W' = W \cdot \text{diag}(s)$，量化后反缩放：$\hat{W}_{\text{eff}} = \hat{W}' \cdot \text{diag}(s)^{-1}$。
+这也是为什么 `per-channel` 往往比 `per-tensor` 更稳：不同通道的动态范围差异被拆开处理后，少数超大值不会把整块量化网格拉得过粗。
 
-等价效果：重要通道的权重被放大后量化，其**相对量化误差**变小。
+### 2.3 非对称量化什么时候更合适
 
-### 4.3 SmoothQuant
+如果数据分布明显偏向某一侧，例如最小值和最大值离原点并不对称，那么更自然的写法是：
 
-> **出处**：Xiao et al., "SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models", 2022
-
-**核心问题**：激活值中存在极端离群值（Outlier），使得激活难以量化。
-
-**解决方案**：将激活的离群值"迁移"到权重中：
 $$
-Y = (X \, \text{diag}(s)^{-1}) \cdot (\text{diag}(s) \, W) = \tilde{X} \cdot \tilde{W}
+\text{scale}_j = \frac{x_j^{\max} - x_j^{\min}}{2^b - 1}
 $$
 
-选择 $s_i = \max|X_i|^\alpha / \max|W_i|^{1-\alpha}$（$\alpha = 0.5$ 时为几何平均），使得 $\tilde{X}$ 和 $\tilde{W}$ 的量化难度均衡。
-
----
-
-## 5. 分层温度分级策略
-
-对于 KV Cache 的不同"热度"，采用不同精度：
-
-| 温度等级 | 精度 | 典型对象 | 回迁延迟 |
-|---------|------|---------|---------|
-| **热 (Hot)** | BF16 / FP16 | 最近 $w$ 个 token，高注意力权重 token | $0$ |
-| **温 (Warm)** | FP8 / INT8 | 中等活跃区间 | 低 |
-| **冷 (Cold)** | INT4 或 CPU Offload | 远距离低注意力 token | 高 |
-
-回迁（反量化）延迟：
 $$
-T_{\text{dequant}} \approx \frac{n_{\text{tokens}} \times d \times s_{\text{compressed}}}{\text{dequant\_throughput}}
+\text{zero\_point}_j = \operatorname{round}\!\left(-\frac{x_j^{\min}}{\text{scale}_j}\right)
 $$
 
-工程上需要设置**每步回迁预算**（$\text{budget\_tokens\_per\_step}$），防止 decode 延迟突增。
+$$
+q_j = \operatorname{round}\!\left(\frac{x_j}{\text{scale}_j} + \text{zero\_point}_j\right)
+$$
 
----
+它在仓库里对应的是 `../src/kv_cache/compression/quantizer.py` 的 `quantize_per_channel_asymmetric()`。
 
-## 6. 面试实战追问
+### 2.4 量化压缩比怎么算才不自欺欺人
 
-**Q1：量化 KV Cache 和量化模型权重有什么区别？**
-> 权重量化在离线完成（static），KV Cache 量化需要**在线实时进行**（每个新 token 生成时立即量化）。因此 KV 量化对延迟更敏感，不适合用 GPTQ 这种需要校准集的方法，更适合简单的 per-token / per-channel 均匀量化。
+忽略 `scale` 和 `zero_point` 的元数据时，量化压缩比最容易写成：
 
-**Q2：INT4 量化 KV Cache 的质量损失如何评估？**
-> 标准做法：在 Perplexity、MMLU、HumanEval 等基准上对比 BF16 baseline。关键看 $\Delta \text{PPL} = \text{PPL}_{\text{quant}} - \text{PPL}_{\text{baseline}}$。一般 $\Delta \text{PPL} < 0.5$ 认为质量可接受。配合 Group Quantization（$g = 128$）和 Residual Window，INT4 通常能达到 $\Delta \text{PPL} < 0.3$。
+$$
+R_{\mathrm{quant}} \approx \frac{s_{\mathrm{fp}}}{s_{\mathrm{q}}}
+$$
 
----
+例如从 BF16 到 INT8，就是：
 
-## 7. 对应源码与阅读顺序
+$$
+R_{\mathrm{quant}} \approx \frac{2}{1} = 2
+$$
 
-- 先读 [../notes/kv-compression/formula-to-code-walkthrough.md](../notes/kv-compression/formula-to-code-walkthrough.md)，把“量化减少每个 token 的字节数”和“稀疏化减少需要保留的 token 数量”两条主线串起来，并对照 H2O / SnapKV 的选择逻辑。
-- 再看 [../src/kv_cache/compression/quantizer.py](../src/kv_cache/compression/quantizer.py)，重点对应 `quantize_per_channel_symmetric()`、`quantize_per_channel_asymmetric()`、`dequantize()`、`quantization_error()`，把 scale、zero point、反量化误差落到实现。
-- 接着看 [../src/kv_cache/compression/sparsifier.py](../src/kv_cache/compression/sparsifier.py)，对应 `cumulative_attention_scores()`、`keep_recent_and_heavy_hitters()`、`snapkv_select()`、`compression_ratio()`，理解“重点击中 + 最近窗口”如何映射成最终保留集合。
-- 最后跑 `python -m pytest tests/test_kv_compression.py -v`，验证量化误差、保留 token 数量和压缩比计算是否与公式一致。
+但线上估算最好再补一层元数据项：
+
+$$
+\text{bytes}_{\text{token}}^{\mathrm{quant}} \approx 2 \times L_{\mathrm{layers}} \times n_{\mathrm{kv\_heads}} \times d_{\mathrm{head}} \times s_{\mathrm{q}} + M_{\mathrm{scales}} + M_{\mathrm{zero\_points}}
+$$
+
+这也是为什么非常短的上下文、或者通道数不大的场景里，理论压缩比和真实压缩比会有偏差。
+
+## 3. 路线二：不是所有 token 都值得一直保留
+
+### 3.1 H2O 风格的核心想法
+
+如果某些历史 token 在很多步里都被反复关注，那么它们就更像“长期有价值的重击点”。最直接的累计打分就是：
+
+$$
+\text{score}_i = \sum_{t=1}^{T_{\mathrm{obs}}} a_{t,i}
+$$
+
+其中 `a_t,i` 可以理解成第 `t` 步对第 `i` 个历史 token 的注意力权重。
+
+如果总预算是 `B`，最近窗口要保留 `r` 个 token，那么保留集合可以写成：
+
+$$
+\mathcal{K}_{\mathrm{H2O}} = \operatorname{TopK}(\text{score}, B-r) \cup \{T-r+1, \ldots, T\}
+$$
+
+也就是说，它做的是“两段式保留”：
+
+- 一段保住最近 token，避免把短期局部依赖砍掉。
+- 一段保住历史重击点，避免把长期关键上下文忘掉。
+
+仓库里对应的是：
+
+- `../src/kv_cache/compression/sparsifier.py` 的 `cumulative_attention_scores()`
+- `../src/kv_cache/compression/sparsifier.py` 的 `keep_recent_and_heavy_hitters()`
+
+### 3.2 SnapKV 风格更像一次性选拔
+
+有些方案不会持续累计全历史，而是用一个观察窗口估计“谁值得留下”。它的主式可以写成：
+
+$$
+\text{score}_i^{\mathrm{snap}} = \sum_{t \in \mathcal{W}_{\mathrm{obs}}} a_{t,i}
+$$
+
+然后同样保留最近窗口，再从更老的 token 里挑高分者：
+
+$$
+\mathcal{K}_{\mathrm{SnapKV}} = \operatorname{TopK}(\text{score}^{\mathrm{snap}}, B-r) \cup \{T-r+1, \ldots, T\}
+$$
+
+它在仓库里对应 `../src/kv_cache/compression/sparsifier.py` 的 `snapkv_select()`。
+
+### 3.3 稀疏化压缩比的最简单写法
+
+如果原始历史长度是 `T_total`，最后只保留 `T_kept`，那么 token 维度上的压缩比就是：
+
+$$
+R_{\mathrm{token}} = \frac{T_{\mathrm{total}}}{T_{\mathrm{kept}}}
+$$
+
+仓库里直接给了对应实现：`../src/kv_cache/compression/sparsifier.py` 的 `compression_ratio()`。
+
+## 4. 量化和稀疏化真正该怎么合起来看
+
+很多讨论会把量化和稀疏化分开讲，但真正做容量预算时，更有用的是把它们合成一条式子：
+
+$$
+R_{\mathrm{overall}} \approx \frac{T_{\mathrm{total}} \times \text{bytes}_{\text{token}}^{\mathrm{fp}}}{T_{\mathrm{kept}} \times \text{bytes}_{\text{token}}^{\mathrm{quant}} + M_{\mathrm{meta}} + M_{\mathrm{index}}}
+$$
+
+这条式子背后的工程判断是：
+
+- 如果你已经把 `bytes_token` 压得很低，再继续抠位宽，收益可能不如减少 `T_kept`。
+- 如果你已经把 `T_kept` 砍得很狠，再继续减 token，质量风险往往比继续量化更大。
+- 元数据不是零成本，特别是分组量化、索引表、保留集合掩码都会吃预算。
+
+## 5. 怎么从公式一路对到仓库源码
+
+这一页最建议按下面顺序对照：
+
+1. 先看 `../src/kv_cache/compression/quantizer.py`。
+   - `quantize_per_channel_symmetric()` 对应对称量化主式。
+   - `quantize_per_channel_asymmetric()` 对应非对称量化主式。
+   - `quantization_error()` 对应误差统计与回放。
+2. 再看 `../src/kv_cache/compression/sparsifier.py`。
+   - `cumulative_attention_scores()` 对应累计注意力打分。
+   - `keep_recent_and_heavy_hitters()` 对应 H2O 风格保留规则。
+   - `snapkv_select()` 对应观察窗口打分与一次性选择。
+3. 最后看 `../tests/test_kv_compression.py`。
+   - 这组测试把量化往返、H2O 风格选择、SnapKV 风格选择和压缩比都做了最小验证。
+
+如果你想按专题继续深入，可以接：
+
+- `../notes/kv-compression/formula-to-code-walkthrough.md`
+- `kv-memory.md`
+- `kv-eviction-math.md`
+
+## 6. 什么时候该优先量化，什么时候该优先选 token
+
+| 场景 | 更先考虑什么 | 原因 |
+|------|--------------|------|
+| 长上下文很多，但重要信息分布很稀疏 | 稀疏化与 token 选择 | `T_kept` 才是主要矛盾 |
+| 长度中等，但 KV 明显占满显存 | 量化 | 先把每个 token 变便宜最稳 |
+| 多租户、高波动、上下文差异极大 | 二者结合 | 只靠单一手段很难稳定 |
+| 对质量极其敏感，无法接受错删 | 轻量量化优先 | 比大幅稀疏化风险更可控 |
+
+## 7. 这页真正该记住什么
+
+- KV Compression 不是单一算法，而是“字节压缩”和“保留压缩”两条线的组合题。
+- `per-channel` 量化的关键收益，不只是压缩率，更是误差更可控。
+- H2O 和 SnapKV 的核心都不是“神秘论文技巧”，而是显式定义一套 token 重要性评分函数。
+- 真正上线时，压缩比一定要把元数据和索引开销一起算进去。
