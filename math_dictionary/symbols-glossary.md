@@ -1,160 +1,129 @@
-# 符号与单位总表
+# 符号速查与专题入口
 
-> **核心定位**：为整个 LLM 推理知识库提供统一的符号约定、单位换算和常见模型参数速查表。所有数学公式中的符号遵循本文档的定义。
+> 这页不再追求“把全仓所有符号一次性列完”。它现在只保留跨专题最常用、最容易混掉的记号，并把你引到对应的深入页。用法很简单：先在这里统一读法，再去专题页看完整推导。
 
----
+## 先记住这套读法约定
 
-## 1. 模型结构符号
+- `B`：batch size，也可以理解成同一时刻的活跃请求数或活跃序列数。
+- `T` 或 `L`：序列长度；在 serving 里常对应上下文长度。
+- `d_model`：模型隐藏维度。
+- `n_heads`：query head 数。
+- `d_head`：单个 head 的维度。
+- `n_kv_heads`：KV head 数；在 GQA 里通常小于 `n_heads`。
+- `rho`：利用率；在排队论里通常表示系统是否接近满载。
+- `lambda`：到达率。
+- `mu`：服务率。
+- `P99`：99 分位时延或尾延迟。
 
-| 符号 | 含义 | 别名 | 说明 |
-|------|------|------|------|
-| $B$ | Batch Size | — | 并发请求数或活跃序列数 |
-| $T$ | 序列长度 | $\text{seq\_len}$ | token 数；$T_q$ = Query 长度，$T_k$ = Key 长度 |
-| $L$ | 模型层数 | $\text{n\_layers}$ | — |
-| $H$ | Attention Head 总数 | $\text{n\_heads}$ | Q 的 Head 数 |
-| $H_{\text{KV}}$ | KV Head 数 | $\text{n\_kv\_heads}$ | GQA: $H_{\text{KV}} < H$；MQA: $H_{\text{KV}} = 1$ |
-| $g$ | GQA 组大小 | $\text{group\_size}$ | $g = H / H_{\text{KV}}$ |
-| $d$ | 隐藏维度 | $d_{\text{model}}$, $d_{\text{hidden}}$ | — |
-| $d_h$ | 单头维度 | $d_{\text{head}}$ | $d_h = d / H$，通常 $128$ |
-| $d_{\text{ff}}$ | FFN 中间维度 | — | 标准: $4d$；SwiGLU: $\approx 8d/3$ |
-| $V$ | 词表大小 | $\text{vocab\_size}$ | 如 $32$K, $128$K |
-| $N$ | 模型参数量 | — | 如 $7 \times 10^9$（7B） |
-| $E$ | MoE 专家总数 | — | — |
-| $E_{\text{active}}$ | 每 token 激活专家数 | — | 如 Mixtral: $E_{\text{active}} = 2$ |
-| $r$ | LoRA 秩 | — | 通常 $4$–$64$ |
+如果某页里出现了同一字母在不同语境下复用，优先看该页开头的“符号约定”段，而不是死记这里的字典。
 
----
+## 一、Attention / 张量形状高频符号
 
-## 2. 精度与内存符号
+| 记号 | 含义 | 最常出现在哪 |
+|------|------|--------------|
+| `X` | 输入 hidden states | Transformer 核心公式、Attention 推导 |
+| `Q` | query 投影结果 | Attention、GQA、MLA、DSA |
+| `K` | key 投影结果 | Attention、GQA、MLA、DSA |
+| `V` | value 投影结果 | Attention、GQA、MLA、DSA |
+| `B` | batch size | 张量形状、serving、训练 |
+| `L` 或 `T` | 序列长度 | Attention、长上下文、KV Cache |
+| `d_model` | 模型主维度 | Transformer 核心公式 |
+| `n_heads` | query head 数 | MHA、GQA、MLA |
+| `d_head` | 单头维度 | Attention、RoPE、FlashAttention |
 
-| 符号 | 含义 | 说明 |
-|------|------|------|
-| $s$ | 每元素字节数 | BF16/FP16: $2$, FP8/INT8: $1$, INT4: $0.5$, FP32: $4$ |
-| $M$ | GPU 显存总量 | 如 A100: $80$ GB |
-| $\text{BW}$ | 显存带宽 | A100: $2$ TB/s, H100: $3.35$ TB/s |
-| $M_{\text{KV}}$ | KV Cache 显存 | $= 2 L H_{\text{KV}} d_h s \times \sum_i T_i$ |
+继续深入：
 
----
+- [tensor-shapes.md](tensor-shapes.md)
+- [transformer-attention-math.md](transformer-attention-math.md)
+- [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md)
 
-## 3. 推理服务符号
+## 二、KV Cache / 长上下文高频符号
 
-| 符号 | 含义 | 单位 |
-|------|------|------|
-| $\lambda$ | 请求到达率 | req/s |
-| $\mu$ | 服务速率 | req/s |
-| $\rho$ | 系统利用率 | $\lambda / \mu$，要求 $< 1$ |
-| $\tau$ | 采样温度 | 无量纲 |
-| $\text{TTFT}$ | Time To First Token | ms |
-| $\text{TPOT}$ | Time Per Output Token | ms/token |
-| $\text{ITL}$ | Inter-Token Latency | ms/token |
-| $\text{P99}$ | 99th percentile latency | ms |
+| 记号 | 含义 | 最常出现在哪 |
+|------|------|--------------|
+| `n_kv_heads` | KV head 数 | GQA、MQA、KV Cache |
+| `group_size` | 一个 KV 组服务多少 query head | GQA |
+| `d_c` | MLA 里共享潜变量的维度 | MLA |
+| `d_r` | 与 RoPE 相关的独立维度 | MLA |
+| `T_cache` | 当前缓存中的 token 长度 | KV Cache、serving |
+| `bytes_per_token` | 单 token 的 KV 开销 | KV 显存估算、serving |
+| `M_KV` | KV Cache 总占用 | KV 显存估算 |
+| `k` | 稀疏注意力保留的候选 token 数 | DSA、稀疏化 |
 
----
+继续深入：
 
-## 4. 训练相关符号
+- [kv-memory.md](kv-memory.md)
+- [kv-compression-math.md](kv-compression-math.md)
+- [kv-eviction-math.md](kv-eviction-math.md)
+- [../notes/attention/mha-vs-gqa-full-derivation.md](../notes/attention/mha-vs-gqa-full-derivation.md)
+- [../notes/attention/mha-vs-mla-full-derivation.md](../notes/attention/mha-vs-mla-full-derivation.md)
+- [../notes/attention/mha-vs-dsa-full-derivation.md](../notes/attention/mha-vs-dsa-full-derivation.md)
 
-| 符号 | 含义 | 说明 |
-|------|------|------|
-| $\eta$ / $\text{lr}$ | 学习率 | — |
-| $D$ | 训练数据量 | token 数 |
-| $C$ | 训练 FLOPs | $C \approx 6ND$ |
-| $\text{MFU}$ | Model FLOPs Utilization | $\text{实际 FLOPs} / \text{理论峰值}$ |
-| $\beta_1, \beta_2$ | Adam 的 EMA 系数 | 通常 $0.9, 0.95$ |
-| $\epsilon$ | Adam 的数值稳定项 | $10^{-8}$ |
+## 三、Serving / Queueing 高频符号
 
----
+| 记号 | 含义 | 最常出现在哪 |
+|------|------|--------------|
+| `TTFT` | 首 token 时延 | 服务指标、SLO |
+| `TPOT` | 每输出 token 平均时延 | 服务指标、decode 性能 |
+| `E2E` | 端到端时延 | serving、排队与 SLO |
+| `lambda` | 到达率 | 排队与 SLO |
+| `mu` | 服务率 | 排队与 SLO |
+| `rho` | 利用率 | 排队与 SLO、admission |
+| `W_q` | 平均排队等待时间 | M/M/1、M/G/1 |
+| `L_q` | 平均队列长度 | Little 定律、M/M/1 |
+| `Goodput` | 满足 SLO 的有效吞吐 | serving 指标 |
 
-## 5. 数学运算符号
+继续深入：
 
-| 符号 | 含义 |
-|------|------|
-| $\odot$ | 逐元素乘法（Hadamard Product） |
-| $\otimes$ | 外积（Outer Product） |
-| $\lVert \cdot \rVert_F$ | Frobenius 范数 |
-| $\lVert \cdot \rVert_*$ | 核范数（Nuclear Norm） |
-| $\sigma(\cdot)$ | Sigmoid 函数 |
-| $\text{KL}(p \parallel q)$ | KL 散度 |
-| $H(p)$ | Shannon 熵 |
-| $\mathbb{E}[\cdot]$ | 期望 |
-| $\mathbb{1}[\cdot]$ | 指示函数 |
-| $\lceil \cdot \rceil$ / $\lfloor \cdot \rfloor$ | 上/下取整 |
+- [serving-metrics.md](serving-metrics.md)
+- [queueing-and-slo.md](queueing-and-slo.md)
+- [../notes/serving/formula-to-code-walkthrough.md](../notes/serving/formula-to-code-walkthrough.md)
+- [../notes/serving/queueing-slo-formula-to-code-walkthrough.md](../notes/serving/queueing-slo-formula-to-code-walkthrough.md)
 
----
+## 四、MoE / 训练高频符号
 
-## 6. 单位换算
+| 记号 | 含义 | 最常出现在哪 |
+|------|------|--------------|
+| `n_experts` | expert 数量 | MoE 路由 |
+| `top_k` | 每个 token 选几个 expert | MoE 路由 |
+| `capacity` | 单 expert 可接纳 token 上限 | MoE serving |
+| `p_i` | 路由器给第 `i` 个 expert 的概率 | MoE 数学 |
+| `A`, `B` | LoRA 的低秩矩阵 | LoRA / PEFT |
+| `r` | LoRA rank，或 Token Bucket 速率；语境很重要 | 训练、serving |
+| `beta` | 各类正则或偏好优化的权重 | RLHF、DPO、KTO |
 
-### 6.1 数据量
+继续深入：
 
-$$
-1 \text{ KB} = 1024 \text{ B}, \quad 1 \text{ MB} = 1024 \text{ KB}, \quad 1 \text{ GB} = 1024 \text{ MB}, \quad 1 \text{ TB} = 1024 \text{ GB}
-$$
+- [moe-routing-math.md](moe-routing-math.md)
+- [lora-peft-math.md](lora-peft-math.md)
+- [rlhf-alignment-math.md](rlhf-alignment-math.md)
+- [../notes/distributed/moe-formula-to-code-walkthrough.md](../notes/distributed/moe-formula-to-code-walkthrough.md)
 
-### 6.2 算力
+## 五、最容易混掉的“同名不同义”
 
-$$
-1 \text{ TFLOPS} = 10^{12} \text{ FLOPS}, \quad 1 \text{ PFLOPS} = 10^{15} \text{ FLOPS}
-$$
+| 记号 | 在 Attention 里 | 在 Serving / 训练里 |
+|------|-----------------|---------------------|
+| `B` | batch size | 活跃请求数、活动序列数 |
+| `T` | 序列长度 | 总观测时间、调度步数 |
+| `r` | 低秩 rank 之类的局部记号 | Token Bucket 的速率 |
+| `k` | top-k 选择数 | DSA 的候选 token 数、MoE 的 expert 数 |
+| `C` | 常表示压缩后的 latent cache | 也可能表示 capacity |
 
-### 6.3 常用 2 的幂次
+遇到这类冲突，最佳做法不是硬背，而是先看“它在描述模型结构、缓存结构，还是服务系统”。
 
-| $2^n$ | 值 | 近似 | LLM 中的用途 |
-|:-----:|:--:|:----:|:----------:|
-| $2^7$ | $128$ | — | 常见 $d_h$ |
-| $2^{10}$ | $1{,}024$ | $\approx 1$K | — |
-| $2^{12}$ | $4{,}096$ | $\approx 4$K | 常见 $d_{\text{model}}$ |
-| $2^{15}$ | $32{,}768$ | $\approx 32$K | 常见 $V$ |
-| $2^{17}$ | $131{,}072$ | $\approx 128$K | 长上下文长度 |
-| $2^{20}$ | $1{,}048{,}576$ | $\approx 1$M | — |
-| $2^{30}$ | — | $\approx 1$G | — |
+## 六、按专题跳转，而不是按字母跳转
 
----
+- 想统一 Attention 记号：去 [transformer-attention-math.md](transformer-attention-math.md)
+- 想统一 KV / 长上下文记号：去 [kv-memory.md](kv-memory.md) 和 [../notes/attention/mha-vs-gqa-full-derivation.md](../notes/attention/mha-vs-gqa-full-derivation.md)
+- 想统一 Serving 记号：去 [serving-metrics.md](serving-metrics.md) 和 [queueing-and-slo.md](queueing-and-slo.md)
+- 想统一 MoE / 训练记号：去 [moe-routing-math.md](moe-routing-math.md) 和 [lora-peft-math.md](lora-peft-math.md)
 
-## 7. 常见模型参数速查
+## 七、如果你只剩 5 分钟
 
-### 7.1 LLaMA 系列
+1. 先把这一页里的 `B`、`L`、`d_model`、`n_heads`、`rho`、`lambda`、`mu` 读熟。
+2. 再去看 [tensor-shapes.md](tensor-shapes.md) 和 [serving-metrics.md](serving-metrics.md)。
+3. 如果你准备的是推理系统面试，再补 [queueing-and-slo.md](queueing-and-slo.md)。
 
-| 规模 | $L$ | $d$ | $H$ | $H_{\text{KV}}$ | $d_h$ | $d_{\text{ff}}$ | BF16 权重 |
-|:----:|:---:|:----:|:---:|:---------------:|:-----:|:---------------:|:---------:|
-| **7B** | $32$ | $4096$ | $32$ | $32$ (MHA) | $128$ | $11008$ | $\sim 14$ GB |
-| **7B** (Llama 2/3) | $32$ | $4096$ | $32$ | $8$ (GQA) | $128$ | $11008$ | $\sim 14$ GB |
-| **13B** | $40$ | $5120$ | $40$ | $40$ | $128$ | $13824$ | $\sim 26$ GB |
-| **34B** | $48$ | $6656$ | $52$ | $8$ | $128$ | $17920$ | $\sim 68$ GB |
-| **70B** | $80$ | $8192$ | $64$ | $8$ | $128$ | $28672$ | $\sim 140$ GB |
-| **405B** | $126$ | $16384$ | $128$ | $8$ | $128$ | $53248$ | $\sim 810$ GB |
+## 这一页记住一句话
 
-### 7.2 GPU 参数速查
-
-| GPU | HBM | BW | BF16 TFLOPS | Roofline 拐点 AI |
-|:---:|:---:|:--:|:-----------:|:---------------:|
-| **A100 80GB** | $80$ GB | $2$ TB/s | $312$ | $\sim 156$ |
-| **H100 80GB** | $80$ GB | $3.35$ TB/s | $990$ | $\sim 295$ |
-| **H200 141GB** | $141$ GB | $4.8$ TB/s | $990$ | $\sim 206$ |
-| **B200** | $192$ GB | $8$ TB/s | $2250$ | $\sim 281$ |
-
----
-
-## 8. 常见 KV 显存速算
-
-$$
-\text{bytes/token} = 2 L H_{\text{KV}} d_h s
-$$
-
-| 模型 | 精度 | bytes/token | 4K token 单序列 | 128K token 单序列 |
-|------|:----:|:-----------:|:--------------:|:----------------:|
-| 7B GQA ($H_{\text{KV}}=8$) | BF16 | $128$ KB | $512$ MB | $16$ GB |
-| 7B MHA ($H_{\text{KV}}=32$) | BF16 | $512$ KB | $2$ GB | $64$ GB |
-| 70B GQA ($H_{\text{KV}}=8$) | BF16 | $320$ KB | $1.25$ GB | $40$ GB |
-| 7B GQA | INT8 | $64$ KB | $256$ MB | $8$ GB |
-| 7B GQA | INT4 | $32$ KB | $128$ MB | $4$ GB |
-
----
-
-## 9. 面试易错点
-
-| 易错点 | 正确理解 |
-|--------|---------|
-| "$H$ 和 $H_{\text{KV}}$ 一样" | GQA/MQA 下 $H_{\text{KV}} \ll H$，显著影响 KV 显存 |
-| "吞吐就是 tokens/s" | 必须说明口径：tokens/s vs req/s，裸吞吐 vs Goodput |
-| "延迟看平均值" | 必须带分位数（P95/P99），平均值掩盖尾延迟 |
-| "$d_{\text{ff}} = 4d$" | SwiGLU 架构中 $d_{\text{ff}} \approx 8d/3$（3 个权重矩阵） |
-| "参数量 = 层数 × 隐藏维度²" | 粗估公式 $N \approx 12 L d^2$（不含 Embedding 和 Head） |
+> 符号表不该是一张越堆越厚的百科目录，而应该是一个“把读法统一之后，立刻把人送去专题页”的入口。真正的推导放在专题里，真正的速查只保留跨专题最常用的记号。

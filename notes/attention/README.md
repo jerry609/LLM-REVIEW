@@ -6,7 +6,7 @@
 
 1. [formula-to-code-walkthrough.md](formula-to-code-walkthrough.md)：最快建立“公式 -> 张量形状 -> 源码”映射。
 2. [attention-evolution-and-inference.md](attention-evolution-and-inference.md)：理解 MHA / MQA / GQA / MLA / SSM 的总图。
-3. [attention-mechanisms-unified-comparison.md](attention-mechanisms-unified-comparison.md)：五类机制放在一张表里比较。
+3. [attention-mechanisms-unified-comparison.md](attention-mechanisms-unified-comparison.md)：先走专题入口，再按问题跳到对应深挖页。
 4. [mha-vs-gqa-full-derivation.md](mha-vs-gqa-full-derivation.md)：看清 GQA 如何压缩 KV Cache。
 5. [mha-vs-mla-full-derivation.md](mha-vs-mla-full-derivation.md)：看清 MLA 为什么能进一步压缩。
 
@@ -23,7 +23,7 @@
 - [mha-vs-mla-full-derivation.md](mha-vs-mla-full-derivation.md)：矩阵吸收、解耦 RoPE、缓存压缩。
 - [mha-vs-dsa-full-derivation.md](mha-vs-dsa-full-derivation.md)：稀疏选择、双阶段计算、索引器成本。
 - [mha-vs-linear-attention-full-derivation.md](mha-vs-linear-attention-full-derivation.md)：结合律、RNN 等价、状态机视角。
-- [attention-mechanisms-unified-comparison.md](attention-mechanisms-unified-comparison.md)：统一参数、缓存、复杂度对比。
+- [attention-mechanisms-unified-comparison.md](attention-mechanisms-unified-comparison.md)：作为总览入口页，负责把你送到 GQA / MLA / DSA / Linear 等专题页。
 
 ## 对应源码
 

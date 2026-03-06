@@ -1,281 +1,247 @@
-# 排队论与 SLO 数学详解
+# 排队与 SLO：从系统直觉到可执行预算
 
-> **核心定位**：从 Little 定律、M/M/1、M/G/1 这些最基本的排队模型出发，把 LLM 推理服务里最常见的问题串成一条完整链路：请求为什么会堆积、为什么 P99 会突然失控、为什么输出长度方差会把队列打爆，以及如何把这些公式落到 SLO、限流和调度决策上。
+> 这页的目标不是把排队论写成一本课本，而是把 serving 场景里真正有用的几条公式整理成一条主线：先看 Little 定律，再看 M/M/1 和 M/M/c，接着看 M/G/1 的长尾放大，最后把结论落到 SLO 预算、限流和 admission 上。
 
----
+## 1. 先统一最小符号集
 
-## 1. Little 定律是容量估算的总入口
-
-Little 定律对任何稳态系统都成立：
-
-$$
-\boxed{L = \lambda W}
-$$
-
-| 符号 | 含义 |
+| 记号 | 含义 |
 |------|------|
-| $L$ | 系统中的平均请求数，包含排队与服务中 |
-| $\lambda$ | 到达率，单位通常是 req/s |
-| $W$ | 平均逗留时间，包含排队与服务时间 |
+| `lambda` | 到达率，单位通常是 req/s |
+| `mu` | 单服务台服务率，单位通常是 req/s |
+| `c` | 并行服务台数量，也可以理解成副本数或实例数 |
+| `rho` | 利用率 |
+| `W` | 平均逗留时间，包含排队与服务 |
+| `W_q` | 平均排队等待时间 |
+| `L` | 系统中的平均请求数 |
+| `L_q` | 队列中的平均请求数 |
+| `C_s` | 服务时间变异系数 |
+| `P99` | 99 分位尾延迟 |
 
-它的价值在于不依赖具体分布，因此经常被拿来做第一层量级检查。
+## 2. Little 定律先给出第一层直觉
 
-### 1.1 映射到 LLM 推理服务
-
-把平均端到端时延记成 $\bar{T}_{\mathrm{E2E}}$，把系统中同时活跃的请求数记成 $\bar{B}_{\mathrm{active}}$，则：
-
-$$
-\bar{B}_{\mathrm{active}} = \lambda \bar{T}_{\mathrm{E2E}}
-$$
-
-如果到达率不变，而端到端时延上升，那么系统里活跃请求数也会同步上升。这就是队列开始自我放大的起点。
-
----
-
-## 2. 单服务器与多服务器模型
-
-### 2.1 M/M/1 是最基础的延迟基线
-
-M/M/1 的三个核心假设可以直接对应到“单 GPU 实例”场景：
-
-| 假设 | 含义 |
-|------|------|
-| 到达过程 | 泊松到达，速率为 $\lambda$ |
-| 服务过程 | 指数分布，服务速率为 $\mu$ |
-| 服务器数量 | 单服务器 |
-
-在这个模型里，利用率是：
+Little 定律写成最熟悉的形式就是：
 
 $$
-\rho = \frac{\lambda}{\mu}, \quad \rho < 1
+L = \lambda W
 $$
 
-### 2.2 M/M/1 的核心公式
+在 LLM serving 语境里，最常用的改写是：
 
 $$
-\bar{W} = \frac{1}{\mu - \lambda} = \frac{1}{\mu(1-\rho)}
+\bar{B}_{\mathrm{active}} \approx \lambda_{\mathrm{req}} \times \bar{T}_{\mathrm{E2E}}
 $$
 
-$$
-\bar{W}_q = \frac{\rho}{\mu - \lambda} = \frac{\rho}{\mu(1-\rho)}
-$$
+这条式子的价值不是“考试会不会考”，而是它能直接解释下面这些现象：
+
+- 平均到达率不变，但 E2E 变长，系统里的活跃请求数就会涨。
+- batch utilization 变高，不一定是纯好事，也可能只是请求在系统里待得更久。
+- 只看 GPU 利用率，不看队列和 E2E，很容易误判系统还在健康区间。
+
+## 3. M/M/1：单服务台下最常用的闭式公式
+
+### 3.1 基本假设
+
+- 到达过程近似泊松。
+- 服务时间近似指数分布。
+- 单服务台，也就是单条服务通道的抽象。
+
+### 3.2 核心公式
+
+利用率定义为：
 
 $$
-\bar{L} = \frac{\rho}{1-\rho}
+\rho = \frac{\lambda}{\mu}
 $$
 
-它们共同说明了一件事：当 $\rho$ 逼近 $1$ 时，平均时延和平均队列长度都会以非线性方式爆炸。
+平均逗留时间：
 
-### 2.3 利用率危险区为什么总被反复强调
+$$
+W = \frac{1}{\mu - \lambda}
+$$
 
-| $\rho$ | $\bar{W} / (1/\mu)$ | 工程含义 |
-|:------:|:--------------------:|----------|
-| $0.5$ | $2\times$ | 还有明显余量，延迟较稳 |
-| $0.7$ | $3.3\times$ | 常被视为可控上限 |
-| $0.8$ | $5\times$ | 抖动开始明显放大 |
-| $0.9$ | $10\times$ | 已进入危险区 |
-| $0.95$ | $20\times$ | 轻微波动都可能触发雪崩 |
+平均排队等待时间：
 
-经验上，$\rho < 0.7$ 常被视为比较稳的运行区间；一旦超过 $0.85$，P99 往往会比平均时延恶化得更快。
+$$
+W_q = \frac{\rho}{\mu - \lambda} = \frac{\lambda}{\mu(\mu - \lambda)}
+$$
 
-### 2.4 M/M/c 描述多实例或多 GPU 服务
+系统中的平均请求数：
 
-若系统有 $c$ 个并行服务器，则利用率变为：
+$$
+L = \lambda W = \frac{\rho}{1 - \rho}
+$$
+
+队列中的平均请求数：
+
+$$
+L_q = \lambda W_q = \frac{\rho^2}{1 - \rho}
+$$
+
+### 3.3 工程解读
+
+这组公式共同说明一件事：只要 `rho` 接近 1，等待时间和队列长度都会非线性爆炸。也就是说，系统最怕的不是“慢一点”，而是“接近打满之后开始没有余量”。
+
+| `rho` | 平均时延相对单次服务时间的放大量 | 工程含义 |
+|--------|-----------------------------------|----------|
+| 0.5 | 约 2 倍 | 还有明显余量 |
+| 0.7 | 约 3.3 倍 | 常被视为比较稳的上限 |
+| 0.8 | 约 5 倍 | 抖动开始明显放大 |
+| 0.9 | 约 10 倍 | 已进入危险区 |
+| 0.95 | 约 20 倍 | 很容易出现尾延迟雪崩 |
+
+## 4. M/M/c 和 Erlang C：多副本不是万能药
+
+当系统有 `c` 个并行服务台时，利用率改写为：
 
 $$
 \rho = \frac{\lambda}{c\mu}
 $$
 
-Erlang C 公式给出请求需要排队的概率：
+此时即便 `rho` 小于 1，仍然可能发生排队。等待概率由 Erlang C 给出：
 
 $$
-P_{\mathrm{wait}} = \frac{\frac{(c\rho)^c}{c!(1-\rho)}}{\sum_{k=0}^{c-1} \frac{(c\rho)^k}{k!} + \frac{(c\rho)^c}{c!(1-\rho)}}
+P_{\mathrm{wait}} = \frac{\frac{(c\rho)^c}{c!(1-\rho)}}{\sum_{n=0}^{c-1} \frac{(c\rho)^n}{n!} + \frac{(c\rho)^c}{c!(1-\rho)}}
 $$
 
-$$
-\bar{W}_q = P_{\mathrm{wait}} \cdot \frac{1}{c\mu(1-\rho)}
-$$
-
-这可以近似看作多 GPU、多副本或多实例服务，但它成立的前提是负载比较均衡。若某些实例更热、某些实例更空，系统的等效服务器数会小于 $c$。
-
----
-
-## 3. 服务时间方差决定排队抖动
-
-### 3.1 M/G/1 和 Pollaczek-Khinchine 公式
-
-当服务时间不再服从指数分布，而是像 LLM 输出长度那样波动很大时，更适合使用 M/G/1：
+平均排队等待时间可写成：
 
 $$
-\boxed{\bar{W}_q = \frac{\rho}{2(1-\rho)} \cdot \frac{1 + C_s^2}{\mu}}
+W_q = \frac{P_{\mathrm{wait}}}{c\mu - \lambda}
 $$
 
-其中变异系数为：
+平均响应时间则是：
 
 $$
-C_s = \frac{\sigma_s}{\mathbb{E}[S]}
+W = W_q + \frac{1}{\mu}
 $$
 
-这个式子的重要结论是：
+### 4.1 工程解读
+
+- 扩副本当然能降等待，但收益会递减。
+- 如果负载分配不均，系统的有效 `c` 会比你部署的副本数更小。
+- 如果单请求服务时间方差很大，多副本也只能缓解，不能根治长尾。
+
+## 5. M/G/1：为什么服务时间方差会把队列放大
+
+真实的 LLM 请求很少满足指数分布，因为 prompt 长度和输出长度差异都很大。此时更有用的公式是 Pollaczek-Khinchine：
 
 $$
-\bar{W}_q \propto 1 + C_s^2
+W_q = \frac{\lambda \mathbb{E}[S^2]}{2(1-\rho)}
 $$
 
-也就是说，服务时间方差会被平方后放大到排队时间里。
+其中：
 
-### 3.2 为什么 LLM 服务的 $C_s$ 往往很大
+$$
+\rho = \lambda \mathbb{E}[S]
+$$
 
-| 变异来源 | 为什么会放大方差 | 常见缓解手段 |
-|----------|------------------|--------------|
-| 输出长度差异 | 有的请求只出几个 token，有的请求会生成几千 token | 长度预测、限制最大输出长度 |
-| 检索或工具调用 | 外部依赖会带来额外抖动 | 分层超时、异步化 |
-| 批处理混合 | 长请求会拖住整批的结束时间 | continuous batching |
-| KV 命中差异 | prefix hit 与 miss 的代价不同 | prefix caching 与请求分流 |
+如果把服务时间变异系数写成 `C_s`，则二阶矩可以改写为：
 
-### 3.3 为什么 continuous batching、SJF 和长度预测会有效
+$$
+\mathbb{E}[S^2] = (1 + C_s^2) \mathbb{E}[S]^2
+$$
 
-它们本质上都在做一件事：降低服务时间的方差。continuous batching 尽量让长请求不再拖住整批，SJF 让短请求先走，长度预测则是给调度器更多先验信息。只要 $C_s$ 下降，M/G/1 给出的平均排队时间也会明显下降。
+代回去之后，平均排队等待时间变成：
 
----
+$$
+W_q = \frac{\lambda (1 + C_s^2) \mathbb{E}[S]^2}{2(1-\rho)}
+$$
 
-## 4. P99 尾延迟为什么会爆炸
+### 5.1 工程解读
 
-### 4.1 M/M/1 的尾部分布
+- 同样的平均服务时间下，`C_s` 越大，排队越糟。
+- 输出长度长尾、prefill 大小差异大、调度抖动大，都会抬高 `C_s`。
+- continuous batching、长度分桶、SJF 风格调度，本质上都在尝试降低服务时间方差。
 
-在 M/M/1 里，逗留时间的互补分布函数可写成：
+## 6. P99 为什么比平均时延更早暴露问题
+
+在 M/M/1 里，等待时间的尾部分布可以写成：
 
 $$
 \Pr[W > t] = \rho e^{-(\mu - \lambda)t}
 $$
 
-把尾概率设成 $0.01$，就得到 P99：
+把尾概率设成 0.01，就得到一个常用的 P99 近似：
 
 $$
-t_{99} = \frac{-\ln(0.01 / \rho)}{\mu - \lambda} = \frac{\ln(100\rho)}{\mu(1-\rho)}
+t_{99} = \frac{-\ln(0.01 / \rho)}{\mu - \lambda}
 $$
 
-### 4.2 为什么利用率从 0.5 到 0.9 会把 P99 拉爆
+也可以写成：
 
-| $\rho$ | $t_{99} / (1/\mu)$ | 直觉解释 |
-|:------:|:------------------:|----------|
-| $0.5$ | $\sim 7.8$ | 尾延迟已经明显大于平均值 |
-| $0.7$ | $\sim 13.4$ | 排队波动开始显著传导到用户侧 |
-| $0.9$ | $\sim 46.1$ | 小波动也会被放大成严重尾延迟 |
+$$
+t_{99} = \frac{\ln(100\rho)}{\mu(1-\rho)}
+$$
 
-$\rho$ 从 $0.5$ 升到 $0.9$ 时，P99 会膨胀到原来的数倍，这也是为什么只看平均时延会误判系统状态。
+| `rho` | P99 相对单次服务时间的量级 | 直觉解释 |
+|--------|----------------------------|----------|
+| 0.5 | 约 7.8 倍 | 尾延迟已经显著大于平均值 |
+| 0.7 | 约 13.4 倍 | 队列波动会明显传到用户侧 |
+| 0.9 | 约 46.1 倍 | 轻微抖动也会被放大 |
 
-### 4.3 实际系统通常比理论更糟
+所以线上排障时，P99 经常会先坏，平均值还没坏到离谱。
 
-真实推理服务里还会叠加 GC、网络抖动、KV 驱逐、负载不均和调度开销，所以线上观测到的 P99 往往会比理想模型更差。公式的价值在于帮你判断主导项，而不是取代理想化实验。
+## 7. 把端到端 SLO 拆成预算，而不是只盯一个总数
 
----
-
-## 5. 把端到端 SLO 拆成可执行预算
-
-### 5.1 预算拆分的基本写法
-
-若目标是端到端 P99，小心的写法通常是：
+如果目标是端到端 P99，一个很实用的预算写法是：
 
 $$
 T_{\mathrm{E2E}}^{99} = T_{\mathrm{queue}}^{99} + T_{\mathrm{prefill}}^{99} + T_{\mathrm{decode}}^{99} + T_{\mathrm{network}}^{99}
 $$
 
-一个典型预算表可能长这样：
+这张预算表最好写成非公式表，而不是把公式塞进表格：
 
-| 子项 | P99 预算 |
-|------|---------|
-| 排队 | $300$ ms |
-| Prefill | $700$ ms |
-| Decode | $800$ ms |
-| 网络传输 | $200$ ms |
-| 合计 | $2000$ ms |
+| 子项 | 常见含义 |
+|------|----------|
+| queue | admission、排队、batch 等待 |
+| prefill | prompt 编码、首轮 KV 构建 |
+| decode | 后续 token 生成、KV 扫描 |
+| network | RPC、网关、流式返回 |
 
-### 5.2 超预算时应该优先动哪些旋钮
+### 7.1 超预算时优先动什么
 
-如果队列预算先爆掉，优先考虑扩容、限流或调度；如果 decode 预算爆掉，优先考虑减少输出长度上限、优化 KV 或提高并发策略；如果 prefill 预算爆掉，则更可能需要看 prompt 长度、批大小或算子实现。把问题拆成预算，才能避免所有异常都被笼统归因成模型太慢。
+- queue 先爆：先看扩容、限流、admission、调度。
+- prefill 先爆：先看 prompt 长度、chunked prefill、prefill 算子效率。
+- decode 先爆：先看 KV 带宽、输出长度、batch 策略、压缩与驱逐。
+- network 先爆：再回到网关、代理层和跨机通信。
 
----
+## 8. 限流和 admission 是 SLO 的执行层
 
-## 6. 限流与调度不是附属逻辑，而是 SLO 的执行层
+一个常见的 admission 规则可以写成：
 
-### 6.1 Token Bucket 限制平均流量与突发流量
+$$
+\operatorname{Admit} = \mathbb{1}\left\{Q_{\mathrm{depth}} < \theta_Q,\ \rho_{\mathrm{KV}} < \theta_{\mathrm{KV}},\ P99 < 0.8 \operatorname{SLO}\right\}
+$$
+
+这个规则背后的意思是：
+
+- `Q_depth` 太深，说明队列已经开始堆积。
+- `rho_KV` 太高，说明显存快没有余量了。
+- `P99` 接近红线，说明系统已经不能只看平均值。
+
+Token Bucket 也是同类执行层工具：
 
 $$
 \operatorname{tokens}(t) = \min\left(\operatorname{tokens}(t-\Delta t) + r\Delta t, B_{\mathrm{burst}}\right)
 $$
 
-其中 $r$ 控制平均放行速率，$B_{\mathrm{burst}}$ 控制突发流量上限。它的作用不是“让系统变快”，而是防止系统被远超设计容量的流量瞬间压垮。
+它的作用不是让系统变快，而是阻止突发流量把系统瞬间压垮。
 
-### 6.2 联合 admission rule 要同时看队列、KV 和 P99
+## 9. 和源码怎么对起来
 
-一个常见的联合放行规则可以写成：
+- 队列公式和闭式解： [../src/simulators/queueing_slo.py](../src/simulators/queueing_slo.py)
+- 服务指标与预算： [../src/simulators/serving_metrics.py](../src/simulators/serving_metrics.py)
+- 调度器最小实现： [../src/simulators/scheduler.py](../src/simulators/scheduler.py)
+- 对照手册： [../notes/serving/queueing-slo-formula-to-code-walkthrough.md](../notes/serving/queueing-slo-formula-to-code-walkthrough.md)
+- 服务主线： [../notes/serving/formula-to-code-walkthrough.md](../notes/serving/formula-to-code-walkthrough.md)
 
-$$
-\operatorname{Admit} = \mathbb{1}\left\{Q_{\mathrm{depth}} < \theta_Q,\ \rho_{\mathrm{KV}} < \theta_{\mathrm{KV}},\ P_{99} < 0.8\operatorname{SLO}\right\}
-$$
+## 10. 最推荐的阅读顺序
 
-| 信号 | 阈值示例 | 含义 |
-|------|---------|------|
-| $Q_{\mathrm{depth}}$ | $50$ | 队列已经偏深 |
-| $\rho_{\mathrm{KV}}$ | $0.9$ | KV 显存接近上限 |
-| $P_{99}$ | $0.8 \operatorname{SLO}$ | 已接近 SLO 红线 |
+1. 先读 Little 定律和 M/M/1，建立“系统为什么会炸”的第一直觉。
+2. 再读 M/G/1，理解为什么长尾请求会把队列放大。
+3. 接着看 P99 和 SLO 预算，把排队论接到真实服务指标。
+4. 最后再看 admission、限流和源码，把理论落到执行层。
 
-只盯一个信号往往不够，因为队列深度、显存压力和尾延迟常常是相互耦合的。
+## 这一页记住一句话
 
-### 6.3 优先级队列与 SJF 在做不同层面的优化
-
-若系统有 VIP 或在线交互请求，可以先定义 aging 后的有效优先级：
-
-$$
-P_{\mathrm{eff}}(i) = P_{\mathrm{base}}(i) + \alpha_{\mathrm{aging}}W_i
-$$
-
-若重点是降低平均等待时间，则可以用输出长度预测做 SJF 近似：
-
-$$
-i^* = \arg\min_i \hat{N}_{\mathrm{out}}(i)
-$$
-
-为了避免长请求被长期饿死，常把排序键改成：
-
-$$
-K(i) = \hat{N}_{\mathrm{out}}(i) - \alpha W_i
-$$
-
-前者解决的是业务优先级，后者解决的是平均时延，两者并不冲突。
-
----
-
-## 7. LLM 推理服务里的决策顺序
-
-### 7.1 先看利用率 $\rho$
-
-如果 $\rho$ 已经长期高于安全区间，再复杂的调度都只能缓解，不能根治。第一判断永远是系统是否已经超载。
-
-### 7.2 再看服务时间方差 $C_s$
-
-若平均利用率还不算高，但 P99 已经很差，通常要怀疑的是服务时间方差，而不是简单扩容不够。
-
-### 7.3 再把问题拆回 SLO 预算
-
-判断瓶颈到底在 queue、prefill、decode 还是 network，避免错误地把调度问题当成算子问题，或者把模型问题当成限流问题。
-
-### 7.4 最后才决定 admission 和 scheduling
-
-当你已经知道瓶颈在哪一层，再决定是扩容、限流、降级、SJF 还是优先级队列，动作才会更有针对性。
-
----
-
-## 8. 面试一句话
-
-> LLM 推理服务的排队抖动常被低估。利用率 $\rho$ 决定系统是否接近爆点，服务时间方差 $C_s$ 决定队列是否被放大，而 P99 会比平均时延更早暴露问题。真正有效的优化顺序通常是先控 $\rho$，再降 $C_s$，最后用 SLO 预算、限流和调度把系统稳定住。
-
----
-
-## 9. 对应源码与阅读顺序
-
-- 先读 [../notes/serving/queueing-slo-formula-to-code-walkthrough.md](../notes/serving/queueing-slo-formula-to-code-walkthrough.md)，把 Little 定律、M/M/1、Erlang C、M/G/1 串成一条从直觉到实现的服务系统主线。
-- 再看 [../src/simulators/queueing_slo.py](../src/simulators/queueing_slo.py)，重点对应 `little_law_concurrency()`、`mm1_stats()`、`erlang_c_wait_probability()`、`mmc_avg_queue_wait()`、`mg1_queue_wait()`、`required_mm1_service_rate()`。
-- 接着看 [../src/simulators/serving_metrics.py](../src/simulators/serving_metrics.py) 和 [../src/simulators/scheduler.py](../src/simulators/scheduler.py)，把排队论结论接到 TTFT / TPOT / Goodput 和调度策略上。
-- 最后跑 `python -m pytest tests/test_queueing_slo.py tests/test_serving_metrics.py tests/test_scheduler.py -v`，验证闭式公式和服务指标之间的对应关系。
+> 排队论在 LLM serving 里最重要的不是背定义，而是知道该先看 `rho`、再看服务时间方差、最后看 SLO 预算。只要这三件事能接起来，你就不会再把所有延迟问题都粗暴归因成“模型太慢”。
