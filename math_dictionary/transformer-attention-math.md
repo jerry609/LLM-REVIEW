@@ -50,19 +50,25 @@ $$
 
 将隐藏层维度 $d_{\text{model}}$ 拆分为 $H$ 个独立的头（Head），每个头维度 $d_{\text{head}} = d_{\text{model}} / H$。
 
-1. **线性投影**：
-   $$
-   Q_i = X W_i^Q, \quad K_i = X W_i^K, \quad V_i = X W_i^V
-   $$
-2. **独立计算注意力**：
-   $$
-   \text{head}_i = \text{Attention}(Q_i, K_i, V_i)
-   $$
-3. **拼接与输出映射**：
-   $$
-   \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_H) W^O
-   $$
-   其中 $W^O \in \mathbb{R}^{d_{\text{model}} \times d_{\text{model}}}$ 负责融合各头信息。
+### 3.1 线性投影
+
+$$
+Q_i = X W_i^Q, \quad K_i = X W_i^K, \quad V_i = X W_i^V
+$$
+
+### 3.2 独立计算注意力
+
+$$
+\operatorname{head}_i = \text{Attention}(Q_i, K_i, V_i)
+$$
+
+### 3.3 拼接与输出映射
+
+$$
+\operatorname{MultiHead}(Q, K, V) = \text{Concat}(\operatorname{head}_1, \dots, \operatorname{head}_H) W^O
+$$
+
+其中 $W^O \in \mathbb{R}^{d_{\text{model}} \times d_{\text{model}}}$ 负责融合各头信息。
 
 ---
 
