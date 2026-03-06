@@ -1,142 +1,212 @@
 # 门控注意力 (Gated Attention) 与相关变体数学推导
 
-> **核心定位**：从最简单的通用门控注意力（Gated Cross-Attention），到深度融合 GLU 的 Gated Attention Unit (GAU)，再到目前支持长文本和 sub-quadratic 训练的 Gated Linear Attention (GLA)。全篇使用严格的 LaTeX 数学公式渲染，并提供论文出处。
+> **核心定位**：把“门”看成可学习的信息阀门，从特征维度的 GLU 风格门控，到序列维度的遗忘门，再到跨模态或 RAG 注入时的 gated cross-attention。本页按“为什么要加门 -> GAU -> GLA -> 交叉注意力扩展”的顺序组织，重点放在信息流控制而不是只罗列公式。
 
 ---
 
-## 1. 为什么需要门控机制？(Why Gating?)
+## 1. 为什么门控值得单独讨论
 
-在标准的 Attention 机制中，模型会将不同位置的 $V$（Value）加权求和。但并非所有的历史上下文都是有用的噪声，传统的 Softmax 注意力很难做到“绝对的遗忘”（因为 Softmax 产生的值总是大于 0）。
+### 1.1 标准注意力擅长加权，不擅长硬性遗忘
 
-**门控机制（Gating Mechanism）**的引入，让模型具备了**动态控制信息流**的能力：
-1. **阻断无关信息**：通过 $\sigma(X) \approx 0$ 的 Sigmoid 或 SiLU 门控，强行截断部分特征通道的传播。
-2. **缓解梯度消失**：门控结构（如 GLU）天然具备更好的梯度流，有助于训练极深的网络。
-3. **引入序列维度的遗忘**：像 RNN 一样，让模型能够主动“遗忘”某些过期的前文状态（如 GLA 的核心设计）。
+标准 attention 会把历史 value 按权重加总，因此它很擅长“强调重要信息”，但不擅长“彻底关闭无关信息”。常见的 softmax 权重是非负且归一化的，它更像连续重分配权重，而不是执行一个明确的开关操作。
+
+### 1.2 特征维度上的门控
+
+门控最常见的写法，是让一条分支产生内容，另一条分支产生 gate，再做逐元素相乘：
+
+$$
+Y = G(X) \odot H(X)
+$$
+
+这类门控直接决定哪些通道可以通过，GLU、SwiGLU、GAU 都属于这一类思想。
+
+### 1.3 序列维度上的遗忘
+
+如果门控直接作用在时序状态更新上，模型就不只是“压暗某些特征”，而是能主动遗忘旧状态。GLA 的核心更新式就是这种形式：
+
+$$
+S_t = \alpha_t \odot S_{t-1} + K_tV_t^\top
+$$
+
+当 $\alpha_t$ 很小时，旧状态会被快速衰减；当 $\alpha_t$ 接近 $1$ 时，模型会保留更多长期上下文。
+
+### 1.4 本页主线
+
+| 机制 | Gate 作用位置 | 主要目标 |
+|------|---------------|----------|
+| GAU | 特征维度 | 把 attention 和 FFN 融成一个更轻的块 |
+| GLA | 状态更新 | 在线性注意力里补上遗忘机制 |
+| Gated Cross-Attention | 残差注入 | 按需吸收外部上下文、图像或检索结果 |
 
 ---
 
 ## 2. GAU (Gated Attention Unit)
 
-> **出处**：《Transformer Quality in Linear Time》 (Hua et al., 2022)
-> **核心思想**：将 Gated Linear Unit (GLU) 与 Attention 强行融合在一个层里，用极其简化的单头注意力搭配强大的 GLU 门控，达到比多头注意力（MHA）更好且更快的性能。
+> **出处**：《Transformer Quality in Linear Time》 (Hua et al., 2022)  
+> **核心思想**：把 GLU 风格的门控与简化 attention 写进同一个块，用更少的结构完成“信息选择 + 非线性变换”。
 
-### 2.1 核心公式推导
+### 2.1 门控分支先决定哪些特征能通过
 
-对于输入序列矩阵 $X \in \mathbb{R}^{T \times d_{\text{model}}}$，GAU 首先生成两个门控分支 $U$ 和 $V$（类似于 GLU 的做法）：
-
-$$
-U = \phi_u(X W_u), \quad V = \phi_v(X W_v)
-$$
-
-其中 $W_u, W_v \in \mathbb{R}^{d_{\text{model}} \times d_{\text{out}}}$，$\phi_u, \phi_v$ 通常是 SiLU 或 Swish 激活函数。
-
-接下来，计算一个极简的**单头注意力（Single-Head Attention）**，它不需要映射到多头，而是直接作用在较小的维度 $d_{\text{attn}}$ 上（如 $d_{\text{attn}} = 64$）：
+对于输入序列 $X \in \mathbb{R}^{T \times d_{\mathrm{model}}}$，GAU 先投影出两个分支：
 
 $$
-Q = X W_q, \quad K = X W_k
-$$
-$$
-A = \frac{1}{T} \text{ReLU}^2\left( \frac{Q K^\top}{\sqrt{d_{\text{attn}}}} \right)
-$$
-*(注：原论文发现用 $\text{ReLU}^2$ 替代 Softmax 可以在保持质量的同时极大提升计算速度，也可以换回 Softmax。)*
-
-最后，将**注意力算出的加权结果**，被**门控分支 $U$ 进行特征维度上的逐元素缩放**：
-
-$$
-O = \left( U \odot (A \cdot V) \right) W_o
+U = \phi_u(XW_u), \quad V = \phi_v(XW_v)
 $$
 
-- $\odot$ 是逐元素乘法（Hadamard Product）。
-- $W_o \in \mathbb{R}^{d_{\text{out}} \times d_{\text{model}}}$ 是输出投影矩阵。
+其中 $W_u, W_v \in \mathbb{R}^{d_{\mathrm{model}} \times d_{\mathrm{out}}}$，$\phi_u, \phi_v$ 通常取 SiLU 或 Swish。可以把 $V$ 看成待聚合的内容，把 $U$ 看成聚合结果最终允许通过多少的 gate。
 
-### 2.2 架构优势
-传统 Transformer 每层需要跑两遍：`MHA -> LayerNorm -> FFN -> LayerNorm`。
-GAU 证明了：把 Attention 放进 FFN（更确切地说是 GLU）的门控分支里，**一层顶两层**，不仅去掉了 MHA 的多头冗余计算，还因为融合了 GLU 获得了极强的非线性表达能力。
+### 2.2 简化 attention 分支负责建模位置关系
+
+GAU 不再显式拆成多头，而是直接在较小的 attention 维度上计算相关性：
+
+$$
+Q = XW_q, \quad K = XW_k
+$$
+
+$$
+A = \frac{1}{T}\operatorname{ReLU}^2\left(\frac{QK^\top}{\sqrt{d_{\mathrm{attn}}}}\right)
+$$
+
+原论文发现，使用 $\operatorname{ReLU}^2$ 可以在保持质量的同时省掉 softmax 的一部分代价。如果需要，也可以把这里替换回 $\operatorname{Softmax}$ 版本。
+
+### 2.3 真正的关键信息流在融合步骤
+
+GAU 的输出写成：
+
+$$
+O = \left(U \odot (AV)\right)W_o
+$$
+
+这里的三个量分别负责不同角色：
+
+| 量 | 作用 |
+|----|------|
+| $AV$ | 把序列中的相关位置聚合成上下文表示 |
+| $U$ | 控制每个输出通道是被放大、抑制还是关闭 |
+| $W_o$ | 把融合结果映射回模型维度 |
+
+这也是 GAU 和“先做 attention、再进 FFN”最本质的区别：门控不是后处理，而是直接嵌入信息路由过程里。
+
+### 2.4 为什么说 GAU 接近“一层顶两层”
+
+标准 Transformer 往往需要一层 attention 加一层 FFN，才能同时完成“跨位置聚合”和“通道级非线性变换”。GAU 把二者压进同一个模块里，因此常被概括成：
+
+$$
+\operatorname{GAU} \approx \operatorname{Attention} + \operatorname{GLU}
+$$
+
+工程上它的优势不是完全消灭 attention，而是用更紧凑的结构拿到接近 `MHA + FFN` 的表达能力。
 
 ---
 
 ## 3. GLA (Gated Linear Attention)
 
-> **出处**：《Gated Linear Attention Transformers with Hardware-Efficient Training》 (Yang et al., 2023)
-> **核心思想**：纯线性注意力（Linear Attention）没有长距离遗忘机制，效果一直被标准 Softmax 注意力碾压。GLA 为线性注意力引入了一维的**数据依赖型遗忘门（Forget Gate）**，使其兼具 RNN 的推理效率和 Transformer 的硬件训练效率。
+> **出处**：《Gated Linear Attention Transformers with Hardware-Efficient Training》 (Yang et al., 2023)  
+> **核心思想**：在线性注意力的递归状态更新里加入数据依赖的遗忘门，让模型既保留 RNN 式高效推理，又不至于把所有历史信息无差别累加。
 
-### 3.1 线性注意力的致命缺陷
-标准线性注意力以 RNN 形式写出来时，其隐藏状态 $S_t$ 的更新公式是：
-$$
-S_t = S_{t-1} + K_t V_t^\top
-$$
-这意味着所有的历史信息被**无差别地**全部累加到 $S_t$ 中，模型无法遗忘早期的无用信息（比如上一个段落的句号）。
+### 3.1 朴素线性注意力的问题是“只积累，不遗忘”
 
-### 3.2 GLA 的遗忘门机制 (RNN 递归形式)
-
-GLA 引入了一个依赖于当前输入的门控向量 $g_t \in \mathbb{R}^{d_{\text{head}}}$，并将其转化为遗忘系数 $\alpha_t$：
+把线性注意力写成递归形式时，核心状态更新通常是：
 
 $$
-g_t = X_t W_g \quad \text{(计算门控)}
-$$
-$$
-\alpha_t = \sigma(g_t) \quad \text{(Sigmoid 激活限制在 0~1 之间)}
+S_t = S_{t-1} + K_tV_t^\top
 $$
 
-然后用 $\alpha_t$ 作为衰减因子（Decay Factor）更新隐藏状态：
+这个式子的好处是推理复杂度低，但问题也很直接：所有历史项都被直接叠加进状态里。只要上下文足够长，旧信息和噪声都会持续滞留，模型没有明确机制决定哪些记忆应该尽快过期。
+
+### 3.2 遗忘门把线性注意力变成可控记忆
+
+GLA 先从当前输入生成 gate：
 
 $$
-S_t = \alpha_t \odot S_{t-1} + K_t V_t^\top \quad (\text{状态更新})
-$$
-$$
-O_t = Q_t \odot S_t \quad (\text{输出查询})
+g_t = X_tW_g, \quad \alpha_t = \sigma(g_t)
 $$
 
-- 当 $\alpha_t \to 0$ 时，模型强行遗忘之前的所有的 $S_{t-1}$，只保留新的 $K_t V_t^\top$。
-- $\odot$ 代表对特征维度的逐通道独立门控。
+再用 $\alpha_t$ 衰减旧状态：
 
-### 3.3 Chunkwise Parallel 形式 (块并行训练)
-
-直接用 RNN 递归形式在 GPU 上训练极慢（因为不可并行）。GLA 的伟大之处在于提出了 Chunkwise 算法（类似 FlashAttention 的分块）：
-
-将长度为 $T$ 的序列分成多个块（Chunk）。块内部使用类似标准 Transformer 的并行计算，块之间使用 RNN 方式传递状态。
-
-对于任意位置 $i$ 和 $j$（其中 $j \le i$），从时间步 $j$ 到 $i$ 的**累积遗忘因子（Cumulative Decay）**为：
 $$
-\alpha_{i,j} = \prod_{k=j+1}^i \alpha_k \quad (\text{若 } j = i \text{，则 } \alpha_{i,i} = 1)
+S_t = \alpha_t \odot S_{t-1} + K_tV_t^\top
 $$
 
-则第 $i$ 步的完整注意力输出可并行计算为：
 $$
-O_i = Q_i \sum_{j=1}^i \alpha_{i,j} \left( K_j V_j^\top \right)
+O_t = Q_t \odot S_t
 $$
 
-**GLA 的意义**：它让线性注意力在语言建模任务上首次缩小了与 Transformer 的差距，并为之后的 Mamba / GLA 混合架构（如 Jamba）奠定了硬件友好型 RNN 训练的理论基础。
+这几个量的直觉可以直接对应成一套记忆系统：
+
+| 量 | 解释 |
+|----|------|
+| $\alpha_t$ | 当前位置对历史状态的保留比例 |
+| $K_tV_t^\top$ | 当前 token 注入的新证据 |
+| $S_t$ | 累积后的记忆状态 |
+| $O_t$ | 查询当前状态后得到的输出 |
+
+当 $\alpha_t \to 0$ 时，模型几乎清空旧状态；当 $\alpha_t \to 1$ 时，模型更接近朴素线性注意力。
+
+### 3.3 Chunkwise 训练把递归状态重新并行化
+
+如果直接按递归式训练，GPU 并行度会很差。GLA 的关键工程贡献是把序列切成 chunk，在块内并行、块间递归。对任意 $j \le i$，累积衰减因子写成：
+
+$$
+\alpha_{i,j} = \prod_{k=j+1}^{i} \alpha_k, \quad \alpha_{i,i} = 1
+$$
+
+于是第 $i$ 个位置的输出可以写成：
+
+$$
+O_i = Q_i \sum_{j=1}^{i} \alpha_{i,j}\left(K_jV_j^\top\right)
+$$
+
+这个形式保留了“先忘、再累积”的语义，同时把大量计算重新搬回适合 GPU 的块并行范式。
+
+### 3.4 GLA 的工程意义
+
+GLA 的价值不只在公式上更优雅，而在于它回答了一个长期存在的问题：为什么很多线性注意力在长文本里质量不稳定。答案通常不是线性化本身错了，而是缺少一套数据依赖的遗忘机制。GLA 补上的正是这部分，因此它也成为后续混合架构和长上下文模型的重要基础。
 
 ---
 
-## 4. 交叉注意力门控 (Gated Cross-Attention)
+## 4. 门控机制在自注意力之外的扩展
 
-> **典型应用**：多模态模型（如 DeepMind 的 Flamingo、Perceiver），或用于将外部检索信息（RAG）注入大模型的场景。
+### 4.1 为什么 Cross-Attention 也需要 gate
 
-### 4.1 公式原理
-在语言模型的主干网络中，我们希望**有条件地**吸收外部信息（例如图片特征或检索出的文档 $C$）。如果在某些层外部信息全是噪声，模型应当能够完全“关闭”交叉注意力。
+在多模态和 RAG 场景里，外部上下文并不总是有用。如果每一层都无条件吸收图像特征或检索片段，模型很容易被噪声拖偏。因此更合理的做法不是永远开着 cross-attention，而是让模型自己决定某一层、某一通道是否需要外部信息。
 
-$$
-\text{Attn}_{\text{cross}} = \text{Softmax}\left(\frac{X W_q \cdot (C W_k)^\top}{\sqrt{d_k}}\right) (C W_v)
-$$
+### 4.2 Gated Cross-Attention 的基本写法
 
-引入一个**可学习的标量或向量门控参数** $\tanh(\gamma)$（初始值通常设为 $0$）：
+设外部上下文为 $C$，则普通 cross-attention 可写成：
 
 $$
-O = X + \tanh(\gamma) \odot \text{Attn}_{\text{cross}}
+\operatorname{Attn}_{\mathrm{cross}} = \operatorname{Softmax}\left(\frac{XW_q(CW_k)^\top}{\sqrt{d_k}}\right)(CW_v)
 $$
 
-- **初始化为 0**：在训练初期，$\tanh(\gamma) \approx 0$，模型等价于纯语言模型，保持了预训练模型的稳定性。
-- **渐进式开放**：随着训练，$\gamma$ 逐渐学习到何时放大交叉注意力的特征，动态吸收外部信息。
+再加上一个可学习 gate：
+
+$$
+O = X + \tanh(\gamma) \odot \operatorname{Attn}_{\mathrm{cross}}
+$$
+
+其中 $\gamma$ 可以是标量，也可以是向量。它决定外部信息是被大幅引入，还是只做很弱的残差修正。
+
+### 4.3 为什么常把 gate 初始化为零
+
+如果初始化时 $\gamma \approx 0$，那么模型一开始几乎等价于原始语言模型，只是在残差支路上留了一个未来可以打开的阀门。这会让训练更稳定，因为模型不需要一上来就同时适应新模态、新检索上下文和新损失。
 
 ---
 
 ## 5. 面试实战总结
 
-1. **什么是门控（Gating）机制？**
-   答：“门控机制本质上是一个可学习的非线性信息阀门，通常用 Sigmoid/SiLU 实现。在 LLM 中，GLU/SwiGLU 是特征维度的门控，而 GLA 则是序列时间维度的遗忘门。”
-2. **为什么 GAU (Gated Attention Unit) 比 MHA 更好？**
-   答：“GAU 把 Attention 操作放进了 GLU 的门控分支里，用极简的单头注意力配合强大的 SiLU 门控，既省去了多头注意力的维度切分与合并开销，又在表达能力上达到了 $1 \text{ 级 GAU} \approx 1 \text{ 级 MHA} + 1 \text{ 级 FFN}$ 的效果。”
-3. **线性注意力为什么需要加 Gate（如 GLA）？**
-   答：“朴素线性注意力将历史 KV 简单求和，缺乏遗忘机制。GLA 引入数据依赖的 decay 因子（Forget Gate），让状态具备类似 RNN 的短期记忆能力，并通过 Chunkwise 实现了硬件友好的并行训练。”
+### 5.1 什么是 gating
+
+可以直接回答：门控机制本质上是可学习的信息阀门。它既可以作用在特征维度上，决定哪些通道通过，也可以作用在时间维度上，决定旧状态要保留多少。
+
+### 5.2 为什么 GAU 经常拿来对比 MHA + FFN
+
+因为 GAU 把跨位置聚合和通道级非线性门控压进同一个块里。它不是简单把 FFN 换个名字，而是通过 $U \odot (AV)$ 这种写法，让 gate 直接参与 attention 输出的路由。
+
+### 5.3 线性注意力为什么需要 forget gate
+
+朴素线性注意力的问题是状态只会加不会忘，长上下文里噪声会不断积累。GLA 用 $\alpha_t$ 给状态更新加上衰减项，本质上是在给线性 attention 补一个可学习的记忆管理器。
+
+### 5.4 Gated Cross-Attention 适合什么场景
+
+当外部上下文质量不稳定时，gated cross-attention 很有价值。它常见于多模态和 RAG，因为模型需要的是按需吸收外部信息，而不是每层都无条件放大外部特征。
