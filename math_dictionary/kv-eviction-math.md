@@ -188,3 +188,12 @@ $$
 
 **Q2：为什么 StreamingLLM 要保留开头的 Sink Token？**
 > Softmax 的归一化特性要求注意力权重之和为 1。当模型对某些位置"不知道该关注哪里"时，它会把注意力"倒"到序列开头的 token 上（即使内容无关）。如果删除这些 token，归一化分母发生剧变，导致所有注意力分布紊乱，输出严重退化。
+
+---
+
+## 9. 对应源码与阅读顺序
+
+- 先读 [../notes/kv-eviction/formula-to-code-walkthrough.md](../notes/kv-eviction/formula-to-code-walkthrough.md)，把 LRU、LFU、Fair quota 三类驱逐策略放到同一个“价值函数 / 预算约束”框架里理解。
+- 再看 [../src/kv_cache/core.py](../src/kv_cache/core.py)，重点关注 `last_access_step`、`use_count`、`num_blocks()` 这些元数据是如何随着访问过程被维护的。
+- 接着看 [../src/kv_cache/eviction/policies.py](../src/kv_cache/eviction/policies.py)，对照三种 `select_victim()` 的排序键，理解为什么不同策略会选出不同牺牲者。
+- 最后跑 `python -m pytest tests/test_kv_cache.py -v`，检查缓存生命周期、访问统计和驱逐结果是否与策略预期一致。

@@ -270,3 +270,12 @@ $$
 ## 8. 面试一句话
 
 > LLM 推理服务的排队抖动常被低估。利用率 $\rho$ 决定系统是否接近爆点，服务时间方差 $C_s$ 决定队列是否被放大，而 P99 会比平均时延更早暴露问题。真正有效的优化顺序通常是先控 $\rho$，再降 $C_s$，最后用 SLO 预算、限流和调度把系统稳定住。
+
+---
+
+## 9. 对应源码与阅读顺序
+
+- 先读 [../notes/serving/queueing-slo-formula-to-code-walkthrough.md](../notes/serving/queueing-slo-formula-to-code-walkthrough.md)，把 Little 定律、M/M/1、Erlang C、M/G/1 串成一条从直觉到实现的服务系统主线。
+- 再看 [../src/simulators/queueing_slo.py](../src/simulators/queueing_slo.py)，重点对应 `little_law_concurrency()`、`mm1_stats()`、`erlang_c_wait_probability()`、`mmc_avg_queue_wait()`、`mg1_queue_wait()`、`required_mm1_service_rate()`。
+- 接着看 [../src/simulators/serving_metrics.py](../src/simulators/serving_metrics.py) 和 [../src/simulators/scheduler.py](../src/simulators/scheduler.py)，把排队论结论接到 TTFT / TPOT / Goodput 和调度策略上。
+- 最后跑 `python -m pytest tests/test_queueing_slo.py tests/test_serving_metrics.py tests/test_scheduler.py -v`，验证闭式公式和服务指标之间的对应关系。

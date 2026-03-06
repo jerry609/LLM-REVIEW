@@ -52,14 +52,20 @@
 - [rlhf-alignment-math.md](rlhf-alignment-math.md)：Bradley-Terry、PPO、DPO、KTO。
 - [evaluation-metrics.md](evaluation-metrics.md)：PPL、BLEU、ROUGE、win rate、统计显著性。
 
-## 公式和源码怎么联动
+## ?????????
 
-- 先看 [transformer-attention-math.md](transformer-attention-math.md) 和 [flashattention-math.md](flashattention-math.md) 把公式捋顺。
-- 再看 [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md) 把公式、张量形状和源码逐段对齐。
-- 最后对照实现：
+- Attention ????? [transformer-attention-math.md](transformer-attention-math.md) ? [flashattention-math.md](flashattention-math.md)??? [../notes/attention/formula-to-code-walkthrough.md](../notes/attention/formula-to-code-walkthrough.md)?
+- KV ????? [kv-memory.md](kv-memory.md)?[kv-compression-math.md](kv-compression-math.md)?[kv-eviction-math.md](kv-eviction-math.md)??? [../notes/kv-cache/formula-to-code-walkthrough.md](../notes/kv-cache/formula-to-code-walkthrough.md)?[../notes/kv-compression/formula-to-code-walkthrough.md](../notes/kv-compression/formula-to-code-walkthrough.md)?[../notes/kv-eviction/formula-to-code-walkthrough.md](../notes/kv-eviction/formula-to-code-walkthrough.md)?
+- Serving ????? [serving-metrics.md](serving-metrics.md) ? [queueing-and-slo.md](queueing-and-slo.md)??? [../notes/serving/formula-to-code-walkthrough.md](../notes/serving/formula-to-code-walkthrough.md) ? [../notes/serving/queueing-slo-formula-to-code-walkthrough.md](../notes/serving/queueing-slo-formula-to-code-walkthrough.md)?
+- ???????
   - [../src/attention/mha_gqa.py](../src/attention/mha_gqa.py)
   - [../src/attention/rope_rmsnorm.py](../src/attention/rope_rmsnorm.py)
   - [../src/attention/flash_attn_sim.py](../src/attention/flash_attn_sim.py)
+  - [../src/kv_cache/compression/quantizer.py](../src/kv_cache/compression/quantizer.py)
+  - [../src/kv_cache/compression/sparsifier.py](../src/kv_cache/compression/sparsifier.py)
+  - [../src/kv_cache/eviction/policies.py](../src/kv_cache/eviction/policies.py)
+  - [../src/simulators/serving_metrics.py](../src/simulators/serving_metrics.py)
+  - [../src/simulators/queueing_slo.py](../src/simulators/queueing_slo.py)
 
 ## GitBook 友好写法约定
 

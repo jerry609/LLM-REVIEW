@@ -50,7 +50,10 @@
 
 - [attention/formula-to-code-walkthrough.md](attention/formula-to-code-walkthrough.md)：把 Attention / GQA / RoPE / RMSNorm / FlashAttention 逐段映射到仓库代码。
 - [kv-cache/formula-to-code-walkthrough.md](kv-cache/formula-to-code-walkthrough.md)：把 KV 容量账本、PagedAttention、量化、驱逐逐段映射到源码。
+- [kv-compression/formula-to-code-walkthrough.md](kv-compression/formula-to-code-walkthrough.md)：把 KV 量化、误差、H2O / SnapKV 选择规则映射到压缩源码。
+- [kv-eviction/formula-to-code-walkthrough.md](kv-eviction/formula-to-code-walkthrough.md)：把 LRU / LFU / Fair quota 的评分函数映射到驱逐策略源码。
 - [serving/formula-to-code-walkthrough.md](serving/formula-to-code-walkthrough.md)：把 TTFT / TPOT / Goodput / 调度策略映射到指标与调度代码。
+- [serving/queueing-slo-formula-to-code-walkthrough.md](serving/queueing-slo-formula-to-code-walkthrough.md)：把 Little 定律、M/M/1、Erlang C、M/G/1 映射到排队模拟代码。
 - [distributed/moe-formula-to-code-walkthrough.md](distributed/moe-formula-to-code-walkthrough.md)：把 MoE router、capacity、drop rate、All-to-All 映射到模拟器。
 - [attention/mha-vs-gqa-full-derivation.md](attention/mha-vs-gqa-full-derivation.md)：GQA 为什么能显著降低 Decode 带宽。
 - [attention/mha-vs-mla-full-derivation.md](attention/mha-vs-mla-full-derivation.md)：MLA 的矩阵吸收和潜在空间压缩。

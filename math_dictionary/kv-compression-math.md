@@ -190,3 +190,12 @@ $$
 
 **Q2：INT4 量化 KV Cache 的质量损失如何评估？**
 > 标准做法：在 Perplexity、MMLU、HumanEval 等基准上对比 BF16 baseline。关键看 $\Delta \text{PPL} = \text{PPL}_{\text{quant}} - \text{PPL}_{\text{baseline}}$。一般 $\Delta \text{PPL} < 0.5$ 认为质量可接受。配合 Group Quantization（$g = 128$）和 Residual Window，INT4 通常能达到 $\Delta \text{PPL} < 0.3$。
+
+---
+
+## 7. 对应源码与阅读顺序
+
+- 先读 [../notes/kv-compression/formula-to-code-walkthrough.md](../notes/kv-compression/formula-to-code-walkthrough.md)，把“量化减少每个 token 的字节数”和“稀疏化减少需要保留的 token 数量”两条主线串起来，并对照 H2O / SnapKV 的选择逻辑。
+- 再看 [../src/kv_cache/compression/quantizer.py](../src/kv_cache/compression/quantizer.py)，重点对应 `quantize_per_channel_symmetric()`、`quantize_per_channel_asymmetric()`、`dequantize()`、`quantization_error()`，把 scale、zero point、反量化误差落到实现。
+- 接着看 [../src/kv_cache/compression/sparsifier.py](../src/kv_cache/compression/sparsifier.py)，对应 `cumulative_attention_scores()`、`keep_recent_and_heavy_hitters()`、`snapkv_select()`、`compression_ratio()`，理解“重点击中 + 最近窗口”如何映射成最终保留集合。
+- 最后跑 `python -m pytest tests/test_kv_compression.py -v`，验证量化误差、保留 token 数量和压缩比计算是否与公式一致。
