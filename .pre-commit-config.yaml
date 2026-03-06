@@ -1,0 +1,16 @@
+minimum_pre_commit_version: "3.6.0"
+
+repos:
+  - repo: local
+    hooks:
+      - id: check-text-encoding
+        name: check text encoding
+        entry: python scripts/check_text_encoding.py
+        language: python
+        files: >-
+          (^|/)(\.gitignore|\.gitattributes|\.editorconfig)$|\.(md|py|txt|json|toml|yml|yaml|html|css|js)$
+      - id: validate-markdown-math
+        name: validate markdown math
+        entry: python scripts/validate_markdown_math.py
+        language: python
+        files: \.md$
