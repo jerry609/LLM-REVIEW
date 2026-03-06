@@ -13,7 +13,7 @@
 
 ### 1.1 TTFT / TPOT / E2E 的定义
 
-对单个请求，记请求到达时间为 $t_{\text{arrive}}$，首 token 输出时间为 $t_{\text{first}}$，最后一个 token 输出时间为 $t_{\text{last}}$，输出 token 数为 $N_{\text{out}}$，则
+对单个请求，记请求到达时间为 `t_arrive`，首 token 输出时间为 `t_first`，最后一个 token 输出时间为 `t_last`，输出 token 数为 `N_out`，则
 
 $$
 \text{TTFT} = t_{\text{first}} - t_{\text{arrive}}
@@ -43,9 +43,9 @@ $$
 
 其中：
 
-- $W_{\text{queue}}$：请求在 admission、队列或 batch 等待中的时间。
-- $T_{\text{prefill}}$：把输入 prompt 编码成首轮 KV 的时间。
-- $T_{\text{first-decode}}$：生成首个输出 token 的时间。
+- `W_queue`：请求在 admission、队列或 batch 等待中的时间。
+- `T_prefill`：把输入 prompt 编码成首轮 KV 的时间。
+- `T_first_decode`：生成首个输出 token 的时间。
 
 这条分解式解释了一个非常常见的现象：当线上 TTFT 变差时，不代表 decode 一定变慢，也可能只是 prefill 被长 prompt 或 decode 优先调度挤压了。
 
@@ -83,13 +83,13 @@ def request_metrics(
     )
 ```
 
-所以线上一旦看到 E2E 抖动，第一步不该是盯着总时延发愁，而是立刻反问：是 $W_{\text{queue}}$ 变大了，还是 TPOT 被 decode 路径拖慢了？
+所以线上一旦看到 E2E 抖动，第一步不该是盯着总时延发愁，而是立刻反问：是 `W_queue` 变大了，还是 TPOT 被 decode 路径拖慢了？
 
 ## 2. 吞吐和 Goodput 不在同一层
 
 ### 2.1 裸吞吐只回答“产出多少”
 
-若总时长为 $T_{\text{total}}$，系统总共完成了 $N_{\text{req}}$ 个请求并生成了 $\sum_i N_{\text{out}}^{(i)}$ 个 token，则
+若总时长记为 `T_total`，系统总共完成了 `N_req` 个请求并生成了总输出 token 数 `sum_i N_out^(i)`，则
 
 $$
 \text{Request Throughput} = \frac{N_{\text{req}}}{T_{\text{total}}}
@@ -103,7 +103,7 @@ $$
 
 ### 2.2 Goodput 关心“满足 SLO 的吞吐”
 
-若 TTFT 和 TPOT 的 SLO 阈值分别是 $\tau_{\text{TTFT}}$ 和 $\tau_{\text{TPOT}}$，则满足条件的请求指标可以写成
+若 TTFT 和 TPOT 的 SLO 阈值分别记为 `tau_ttft` 和 `tau_tpot`，则满足条件的请求指标可以写成
 
 $$
 I_i = \mathbb{1}\left\{\text{TTFT}_i \le \tau_{\text{TTFT}},\ \text{TPOT}_i \le \tau_{\text{TPOT}}\right\}
@@ -146,9 +146,9 @@ $$
 
 假设 2 秒内完成 2 个请求：
 
-- 裸请求吞吐是 $2 / 2 = 1$ req/s。
-- 若只有 1 个请求同时满足 TTFT 和 TPOT 的 SLO，则满足率是 $1 / 2 = 0.5$。
-- 因而 Goodput 是 $1 \times 0.5 = 0.5$ req/s。
+- 裸请求吞吐是 `2 / 2 = 1` req/s。
+- 若只有 1 个请求同时满足 TTFT 和 TPOT 的 SLO，则满足率是 `1 / 2 = 0.5`。
+- 因而 Goodput 是 `1 x 0.5 = 0.5` req/s。
 
 这正是 [../../tests/test_serving_metrics.py](../../tests/test_serving_metrics.py) 里 `test_throughput_and_goodput()` 在验证的事情。
 
@@ -167,7 +167,7 @@ $$
 D_{\text{req}} \approx N_{\text{in}} \cdot c_{\text{prefill}} + N_{\text{out}} \cdot c_{\text{decode}}
 $$
 
-其中 $c_{\text{prefill}}$ 是每个输入 token 的 prefill 平均代价，$c_{\text{decode}}$ 是每个输出 token 的 decode 平均代价。
+其中 `c_prefill` 是每个输入 token 的 prefill 平均代价，`c_decode` 是每个输出 token 的 decode 平均代价。
 
 ### 3.2 对应源码
 
@@ -185,13 +185,13 @@ def request_service_demand(
 
 ### 3.3 为什么这一步能接到排队论
 
-如果平均服务需求大致是 $\mathbb{E}[D_{\text{req}}]$，那么单副本的平均服务率近似满足
+如果平均服务需求大致记为 `E[D_req]`，那么单副本的平均服务率近似满足
 
 $$
 \mu_{\text{req}} \approx \frac{1}{\mathbb{E}[D_{\text{req}}]}
 $$
 
-接下来再把它带到 [queueing-slo-formula-to-code-walkthrough.md](queueing-slo-formula-to-code-walkthrough.md) 的 $\rho = \lambda / \mu$、M/M/1 和 M/G/1 里，就能把“请求长度分布”接到“系统是否会炸”上。
+接下来再把它带到 [queueing-slo-formula-to-code-walkthrough.md](queueing-slo-formula-to-code-walkthrough.md) 的 `rho = lambda / mu`、M/M/1 和 M/G/1 里，就能把“请求长度分布”接到“系统是否会炸”上。
 
 ## 4. 调度器如何改写 TTFT 和 TPOT
 
@@ -218,7 +218,7 @@ def stage(self) -> str:
 
 ### 4.2 decode first 的分配规则
 
-记第 $t$ 个调度步的最大 batch 容量为 $B_{\max}$，活跃 decode 请求数为 $B_t^{\text{decode}}$，则 prefill 能用的剩余位置是
+记第 `t` 个调度步的最大 batch 容量为 `B_max`，活跃 decode 请求数为 `B_decode_t`，则 prefill 能用的剩余位置是
 
 $$
 B_t^{\text{prefill}} = B_{\max} - B_t^{\text{decode}}
@@ -243,7 +243,7 @@ selected_prefill = prefill_reqs[:remaining_slots]
 
 ### 4.3 chunked prefill 的离散更新式
 
-对某个被选中的 prefill 请求，设输入长度为 $T_{\text{in}}^{(i)}$，当前已完成 prefill 的 token 数为 $p_t^{(i)}$，每步最多推进 $C_{\text{prefill}}$ 个 token，则
+对某个被选中的 prefill 请求，设输入长度为 `T_in^(i)`，当前已完成 prefill 的 token 数为 `p_t^(i)`，每步最多推进 `C_prefill` 个 token，则
 
 $$
 p_{t+1}^{(i)} = \min\left(T_{\text{in}}^{(i)},\; p_t^{(i)} + C_{\text{prefill}}\right)
@@ -281,7 +281,7 @@ $$
 
 ### 5.1 数学定义
 
-若第 $t$ 个调度步的活跃 batch 大小为 $b_t$，共观察 $T$ 个调度步，则平均 batch 利用率为
+若第 `t` 个调度步的活跃 batch 大小为 `b_t`，共观察 `T` 个调度步，则平均 batch 利用率为
 
 $$
 U_{\text{batch}} = \frac{1}{T \times B_{\max}} \sum_{t=1}^{T} b_t
@@ -296,7 +296,7 @@ def batch_utilization(active_batch_history: Sequence[int], max_batch_size: int) 
 
 ### 5.2 为什么高利用率不一定是好事
 
-若请求吞吐为 $\lambda_{\text{req}}$，平均端到端时延为 $\overline{\text{E2E}}$，则由 Little 定律可近似得到
+若请求吞吐记为 `lambda_req`，平均端到端时延记为 `E2E_avg`，则由 Little 定律可近似得到
 
 $$
 \bar{B}_{\text{active}} \approx \lambda_{\text{req}} \times \overline{\text{E2E}}
@@ -308,7 +308,7 @@ $$
 
 ### 6.1 每个 decode 步要扫多少 KV
 
-设当前活跃 batch 为 $B_{\text{active}}$，每个 token 的 KV 开销是 `bytes_per_token`，平均缓存长度为 $\bar{T}_{\text{cache}}$，则一个 decode 步需要读取的 KV 数据量近似是
+设当前活跃 batch 为 `B_active`，每个 token 的 KV 开销是 `bytes_per_token`，平均缓存长度记为 `T_cache_avg`，则一个 decode 步需要读取的 KV 数据量近似是
 
 $$
 \text{KV\_bytes\_per\_step} = B_{\text{active}} \times \text{bytes\_per\_token} \times \bar{T}_{\text{cache}}
@@ -323,7 +323,7 @@ def kv_step_bytes(active_batch: int, bytes_per_token: int, avg_cache_tokens: int
 
 ### 6.2 带宽下界给出 TPOT 的硬约束
 
-如果显存可提供的有效带宽是 $BW_{\text{mem}}$，那么仅从搬运 KV 的角度看，每一步 decode 时间都满足下界
+如果显存可提供的有效带宽记为 `BW_mem`，那么仅从搬运 KV 的角度看，每一步 decode 时间都满足下界
 
 $$
 T_{\text{decode-step}} \ge \frac{\text{KV\_bytes\_per\_step}}{BW_{\text{mem}}}
@@ -361,7 +361,7 @@ $$
 
 - admission 太紧或排队过长；
 - prefill 被 decode first 长时间挤压；
-- prompt 偏长，导致 $T_{\text{prefill}}$ 占比升高。
+- prompt 偏长，导致 prefill 时间占比升高。
 
 ### 7.2 TTFT 稳、TPOT 高
 
@@ -381,7 +381,7 @@ $$
 
 ### 7.4 batch utilization 高、E2E 也高
 
-这不一定是“调得好”，也可能是 Little 定律在提醒你：系统里积压的活跃请求更多了。此时应继续接到 [queueing-slo-formula-to-code-walkthrough.md](queueing-slo-formula-to-code-walkthrough.md)，用 $\rho$、M/M/1 或 M/G/1 判断是否已接近过载。
+这不一定是“调得好”，也可能是 Little 定律在提醒你：系统里积压的活跃请求更多了。此时应继续接到 [queueing-slo-formula-to-code-walkthrough.md](queueing-slo-formula-to-code-walkthrough.md)，用 `rho`、M/M/1 或 M/G/1 判断是否已接近过载。
 
 ## 8. 建议的源码阅读顺序
 

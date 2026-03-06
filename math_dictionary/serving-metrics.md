@@ -30,8 +30,14 @@ $$
 \text{TTFT} = \underbrace{T_{\text{queue}}}_{\text{排队等待}} + \underbrace{T_{\text{prefill}}}_{\text{Prefill 计算}} + \underbrace{T_{\text{scheduling}}}_{\text{调度开销}}
 $$
 
-- **无 Chunked Prefill 时**：$T_{\text{prefill}} \approx 2NT_{\text{in}} / (\text{FLOPS} \times \text{MFU})$。
-- **有 Chunked Prefill 时**：$T_{\text{prefill}} = \lceil T_{\text{in}} / C_{\text{size}} \rceil \times T_{\text{chunk}} + T_{\text{decode\_interleave}}$。
+- **无 Chunked Prefill 时**：
+$$
+T_{\text{prefill}} \approx \frac{2NT_{\text{in}}}{\text{FLOPS} \times \text{MFU}}
+$$
+- **有 Chunked Prefill 时**：
+$$
+T_{\text{prefill}} = \left\lceil \frac{T_{\text{in}}}{C_{\text{size}}} \right\rceil \times T_{\text{chunk}} + T_{\text{decode\_interleave}}
+$$
 
 ### 1.3 TPOT 的分解
 
@@ -39,7 +45,10 @@ $$
 \text{TPOT} \approx \frac{M_{\text{weights}} + M_{\text{KV\_step}}}{\text{BW}} + T_{\text{comm}} + T_{\text{scheduling}}
 $$
 
-其中 $M_{\text{KV\_step}} = B_{\text{active}} \times \text{bytes\_per\_token} \times T_{\text{avg\_cache}}$ 是每步需要读取的 KV Cache 量。
+其中 `M_KV_step` 是每步需要读取的 KV Cache 量，写成公式就是：
+$$
+M_{\text{KV\_step}} = B_{\text{active}} \times \text{bytes\_per\_token} \times T_{\text{avg\_cache}}
+$$
 
 ---
 
@@ -158,7 +167,7 @@ $$
 | 命中率升但 TPOT 差 | Refill Rate / Dequant | 回迁/反量化抖动 | 增加回迁预算 / 减少驱逐频率 |
 | P99 剧烈抖动 | KV Eviction Spike / Comm | 驱逐风暴或跨卡通信峰值 | 预留 KV Buffer / 优化通信 |
 | GPU Util 低但 TPOT 高 | AI (Arithmetic Intensity) | Memory-bound | 增大 Batch / 量化权重 |
-| Queue Depth 持续增长 | $\rho$ (利用率) | 服务容量不足 | 扩容或限流 |
+| Queue Depth 持续增长 | rho（利用率） | 服务容量不足 | 扩容或限流 |
 
 ---
 
@@ -166,11 +175,11 @@ $$
 
 | 指标 | 预警阈值 | 紧急阈值 | 说明 |
 |------|---------|---------|------|
-| $\rho_{\text{KV}}$ | $> 80\%$ | $> 90\%$ | 准备触发驱逐 |
-| P99 TTFT | $> 0.7 \times \text{SLO}$ | $> 0.9 \times \text{SLO}$ | 接近 SLO 上限 |
-| OOM Rate | $> 0.01\%$ | $> 0.1\%$ | 调整 Batch 策略 |
-| Refill Rate | $> 5\%$ | $> 15\%$ | 优化驱逐策略 |
-| Queue Depth | $> 2 \times B_{\max}$ | 持续增长 | 扩容或限流 |
+| rho_KV | > 80% | > 90% | 准备触发驱逐 |
+| P99 TTFT | > 0.7 x SLO | > 0.9 x SLO | 接近 SLO 上限 |
+| OOM Rate | > 0.01% | > 0.1% | 调整 Batch 策略 |
+| Refill Rate | > 5% | > 15% | 优化驱逐策略 |
+| Queue Depth | > 2 x B_max | 持续增长 | 扩容或限流 |
 
 ---
 
